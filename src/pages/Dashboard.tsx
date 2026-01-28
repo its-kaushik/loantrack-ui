@@ -43,23 +43,23 @@ export default function Dashboard() {
 
       if (portfolioRes.success) {
         setPortfolio(portfolioRes.data);
-        
-        // Calculate aggregated metrics
-        const totalOutstanding = portfolioRes.data.reduce((sum, p) => sum + p.totalOutstanding, 0);
-        const totalProfit = portfolioRes.data.reduce((sum, p) => sum + p.totalInterestEarned + p.totalPenaltyEarned, 0);
-        
+
+        // Calculate aggregated metrics (API returns strings, need to parse)
+        const totalOutstanding = portfolioRes.data.reduce((sum, p) => sum + parseFloat(p.totalPrincipalOutstanding || '0'), 0);
+        const totalProfit = portfolioRes.data.reduce((sum, p) => sum + parseFloat(p.totalInterestCollected || '0') + parseFloat(p.totalPenaltyCollected || '0'), 0);
+
         setMetrics({
           totalOutstanding,
           totalProfit,
           overdueCount: overdueRes.success ? overdueRes.data.length : 0,
-          todayTarget: collectionsRes.success 
-            ? collectionsRes.data.reduce((sum, c) => sum + c.dueAmount, 0) 
+          todayTarget: collectionsRes.success
+            ? collectionsRes.data.totalExpected
             : 0
         });
       }
 
       if (collectionsRes.success) {
-        setTodayCollections(collectionsRes.data.slice(0, 5));
+        setTodayCollections(collectionsRes.data.collections.slice(0, 5));
       }
     } catch (err) {
       console.error('Dashboard fetch error:', err);
@@ -212,22 +212,22 @@ export default function Dashboard() {
               {portfolio.length > 0 ? portfolio.map((item, idx) => (
                 <div key={idx} className="flex items-center justify-between p-4 rounded-lg bg-muted/50">
                   <div className="flex items-center gap-3">
-                    {item.loanType.includes('Monthly') ? (
+                    {item.loanType.includes('TYPE_A') || item.loanType.includes('Monthly') ? (
                       <Calendar className="h-5 w-5 text-primary" />
                     ) : (
                       <CalendarDays className="h-5 w-5 text-accent" />
                     )}
                     <div>
-                      <p className="font-medium">{item.loanType}</p>
+                      <p className="font-medium">{item.loanType.replace('_', ' ')}</p>
                       <p className="text-sm text-muted-foreground">
                         {item.activeLoans} active of {item.totalLoans} total
                       </p>
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="font-semibold">{formatCurrency(item.totalOutstanding)}</p>
+                    <p className="font-semibold">{formatCurrency(parseFloat(item.totalPrincipalOutstanding || '0'))}</p>
                     <p className="text-sm text-success">
-                      +{formatCurrency(item.totalInterestEarned)}
+                      +{formatCurrency(parseFloat(item.totalInterestCollected || '0'))}
                     </p>
                   </div>
                 </div>

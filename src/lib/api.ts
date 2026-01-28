@@ -113,9 +113,12 @@ export interface UpdateUserRoleRequest {
 export interface User {
   id: string;
   email: string;
-  name: string;
+  name?: string;
+  fullName?: string;
+  phone?: string;
   role: UserRole;
   isActive: boolean;
+  lastLoginAt?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -308,10 +311,16 @@ export interface PortfolioSummary {
   loanType: string;
   totalLoans: number;
   activeLoans: number;
-  totalDisbursed: number;
-  totalOutstanding: number;
-  totalInterestEarned: number;
-  totalPenaltyEarned: number;
+  closedLoans: number;
+  defaultedLoans: number;
+  totalDisbursed: string;
+  totalPrincipalOutstanding: string;
+  totalInterestCollected: string;
+  totalPenaltyCollected: string;
+  totalProfitRealized: string;
+  interestReceivable: string;
+  penaltyReceivable: string;
+  totalOutstandingInMarket: string;
 }
 
 export interface DueCollection {
@@ -322,6 +331,14 @@ export interface DueCollection {
   dueAmount: number;
   dueDate: string;
   daysOverdue: number;
+}
+
+export interface DailyCollectionResponse {
+  date: string;
+  totalExpected: number;
+  totalCollected: number;
+  pending: number;
+  collections: DueCollection[];
 }
 
 // Health
@@ -689,7 +706,7 @@ class ApiClient {
     return this.get('/reports/portfolio-summary');
   }
 
-  async getDailyCollection(date?: string): Promise<SuccessResponse<DueCollection[]>> {
+  async getDailyCollection(date?: string): Promise<SuccessResponse<DailyCollectionResponse>> {
     return this.get('/reports/daily-collection', date ? { date } : undefined);
   }
 

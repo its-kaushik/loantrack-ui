@@ -50,7 +50,8 @@ export function AppSidebar() {
 
   const isActive = (path: string) => location.pathname === path || location.pathname.startsWith(path + '/');
 
-  const getInitials = (name: string) => {
+  const getInitials = (name: string | undefined) => {
+    if (!name) return 'U';
     return name
       .split(' ')
       .map(n => n[0])
@@ -146,12 +147,12 @@ export function AppSidebar() {
           <div className="flex items-center gap-3">
             <Avatar className="h-9 w-9 bg-sidebar-accent">
               <AvatarFallback className="bg-sidebar-accent text-sidebar-foreground text-sm">
-                {getInitials(user.name)}
+                {getInitials(user.fullName || user.name)}
               </AvatarFallback>
             </Avatar>
             {!collapsed && (
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-sidebar-foreground truncate">{user.name}</p>
+                <p className="text-sm font-medium text-sidebar-foreground truncate">{user.fullName || user.name || user.email || 'User'}</p>
                 <p className="text-xs text-sidebar-foreground/60 truncate">{user.role}</p>
               </div>
             )}

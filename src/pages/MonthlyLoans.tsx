@@ -1,14 +1,17 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { 
-  Calendar, 
-  AlertCircle, 
-  IndianRupee, 
-  Loader2, 
+import {
+  Calendar,
+  AlertCircle,
+  IndianRupee,
+  Loader2,
   RefreshCw,
   ChevronRight,
   Clock,
-  CheckCircle2
+  CheckCircle2,
+  Banknote,
+  XCircle,
+  CircleDashed
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -29,24 +32,34 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { api, Loan } from "@/lib/api";
+import { api, Loan, LoanStatus } from "@/lib/api";
 import { toast } from "@/hooks/use-toast";
 
 export default function MonthlyLoans() {
   const [loans, setLoans] = useState<Loan[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [statusFilter, setStatusFilter] = useState<LoanStatus | 'ALL'>('ALL');
   const [selectedLoan, setSelectedLoan] = useState<Loan | null>(null);
   const [collectType, setCollectType] = useState<'interest' | 'principal' | null>(null);
   const [amount, setAmount] = useState("");
   const [isCollecting, setIsCollecting] = useState(false);
+  const [isDisbursing, setIsDisbursing] = useState(false);
+  const [disburseDialogLoan, setDisburseDialogLoan] = useState<Loan | null>(null);
 
   const fetchLoans = async () => {
     setIsLoading(true);
     try {
-      // Fetch loans and filter for Type A (monthly) loans
-      const response = await api.getLoans({ status: 'ACTIVE' });
+      // Fetch all loans (no status filter) and filter by type on client
+      const response = await api.getLoans(statusFilter === 'ALL' ? {} : { status: statusFilter });
       if (response.success) {
         // Filter for monthly loans (Type A typically has termMonths)
         const monthlyLoans = response.data.filter(loan => loan.termMonths && loan.termMonths > 0);
@@ -64,9 +77,31 @@ export default function MonthlyLoans() {
     }
   };
 
+  const handleDisburse = async () => {
+    if (!disburseDialogLoan) return;
+    setIsDisbursing(true);
+    try {
+      await api.disburseLoan(disburseDialogLoan.id);
+      toast({
+        title: "Loan Disbursed",
+        description: `${disburseDialogLoan.loanNumber} is now ACTIVE`,
+      });
+      setDisburseDialogLoan(null);
+      fetchLoans();
+    } catch (err) {
+      toast({
+        title: "Disbursement Failed",
+        description: "Failed to disburse loan",
+        variant: "destructive"
+      });
+    } finally {
+      setIsDisbursing(false);
+    }
+  };
+
   useEffect(() => {
     fetchLoans();
-  }, []);
+  }, [statusFilter]);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-IN', {
@@ -91,6 +126,41 @@ export default function MonthlyLoans() {
 
   const getMonthlyInterest = (loan: Loan) => {
     return (loan.principalAmount * loan.interestRate) / 100;
+  };
+
+  const getStatusBadge = (status: LoanStatus) => {
+    switch (status) {
+      case 'PENDING':
+        return (
+          <Badge variant="outline" className="border-blue-500 text-blue-500">
+            <CircleDashed className="mr-1 h-3 w-3" />
+            Pending
+          </Badge>
+        );
+      case 'ACTIVE':
+        return (
+          <Badge variant="outline" className="border-success text-success">
+            <CheckCircle2 className="mr-1 h-3 w-3" />
+            Active
+          </Badge>
+        );
+      case 'CLOSED':
+        return (
+          <Badge variant="outline" className="border-muted-foreground text-muted-foreground">
+            <CheckCircle2 className="mr-1 h-3 w-3" />
+            Closed
+          </Badge>
+        );
+      case 'DEFAULTED':
+        return (
+          <Badge variant="destructive">
+            <XCircle className="mr-1 h-3 w-3" />
+            Defaulted
+          </Badge>
+        );
+      default:
+        return <Badge variant="outline">{status}</Badge>;
+    }
   };
 
   const handleCollect = async () => {
@@ -151,33 +221,63 @@ export default function MonthlyLoans() {
           </h1>
           <p className="text-muted-foreground">Type A loans with monthly interest payments</p>
         </div>
-        <Button variant="outline" onClick={fetchLoans}>
-          <RefreshCw className="mr-2 h-4 w-4" />
-          Refresh
-        </Button>
+        <div className="flex items-center gap-2">
+          <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as LoanStatus | 'ALL')}>
+            <SelectTrigger className="w-[140px]">
+              <SelectValue placeholder="Filter status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">All Status</SelectItem>
+              <SelectItem value="PENDING">Pending</SelectItem>
+              <SelectItem value="ACTIVE">Active</SelectItem>
+              <SelectItem value="CLOSED">Closed</SelectItem>
+              <SelectItem value="DEFAULTED">Defaulted</SelectItem>
+            </SelectContent>
+          </Select>
+          <Button variant="outline" onClick={fetchLoans}>
+            <RefreshCw className="mr-2 h-4 w-4" />
+            Refresh
+          </Button>
+        </div>
       </div>
 
       {/* Summary Cards */}
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-4">
+        <Card className="metric-card border-blue-500/50">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Pending</p>
+                <p className="text-2xl font-bold text-blue-500">
+                  {loans.filter(l => l.status === 'PENDING').length}
+                </p>
+              </div>
+              <CircleDashed className="h-8 w-8 text-blue-500/20" />
+            </div>
+          </CardContent>
+        </Card>
+
         <Card className="metric-card">
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Active Loans</p>
-                <p className="text-2xl font-bold">{loans.length}</p>
+                <p className="text-2xl font-bold">
+                  {loans.filter(l => l.status === 'ACTIVE').length}
+                </p>
               </div>
               <Calendar className="h-8 w-8 text-primary/20" />
             </div>
           </CardContent>
         </Card>
-        
+
         <Card className="metric-card">
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Total Outstanding</p>
                 <p className="text-2xl font-bold">
-                  {formatCurrency(loans.reduce((sum, l) => sum + l.outstandingPrincipal, 0))}
+                  {formatCurrency(loans.filter(l => l.status === 'ACTIVE').reduce((sum, l) => sum + l.outstandingPrincipal, 0))}
                 </p>
               </div>
               <IndianRupee className="h-8 w-8 text-primary/20" />
@@ -191,7 +291,7 @@ export default function MonthlyLoans() {
               <div>
                 <p className="text-sm text-muted-foreground">Interest Due</p>
                 <p className="text-2xl font-bold text-warning">
-                  {loans.filter(l => isInterestDue(l)).length}
+                  {loans.filter(l => l.status === 'ACTIVE' && isInterestDue(l)).length}
                 </p>
               </div>
               <AlertCircle className="h-8 w-8 text-warning/20" />
@@ -247,34 +347,43 @@ export default function MonthlyLoans() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      {isInterestDue(loan) ? (
-                        <Badge variant="outline" className="status-overdue border-warning text-warning">
+                      {getStatusBadge(loan.status)}
+                      {loan.status === 'ACTIVE' && isInterestDue(loan) && (
+                        <Badge variant="outline" className="ml-2 border-warning text-warning">
                           <Clock className="mr-1 h-3 w-3" />
                           Interest Due
-                        </Badge>
-                      ) : (
-                        <Badge variant="outline" className="status-active border-success text-success">
-                          <CheckCircle2 className="mr-1 h-3 w-3" />
-                          Current
                         </Badge>
                       )}
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
-                        <Button 
-                          size="sm" 
-                          variant="outline"
-                          onClick={() => openCollectionDialog(loan, 'interest')}
-                        >
-                          Collect Interest
-                        </Button>
-                        <Button 
-                          size="sm" 
-                          variant="ghost"
-                          onClick={() => openCollectionDialog(loan, 'principal')}
-                        >
-                          Return Principal
-                        </Button>
+                        {loan.status === 'PENDING' && (
+                          <Button
+                            size="sm"
+                            onClick={() => setDisburseDialogLoan(loan)}
+                          >
+                            <Banknote className="mr-1 h-4 w-4" />
+                            Disburse
+                          </Button>
+                        )}
+                        {loan.status === 'ACTIVE' && (
+                          <>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => openCollectionDialog(loan, 'interest')}
+                            >
+                              Collect Interest
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => openCollectionDialog(loan, 'principal')}
+                            >
+                              Return Principal
+                            </Button>
+                          </>
+                        )}
                         <Link to={`/loans/${loan.id}`}>
                           <Button size="sm" variant="ghost">
                             <ChevronRight className="h-4 w-4" />
@@ -310,7 +419,7 @@ export default function MonthlyLoans() {
               {selectedLoan?.loanNumber} - Record {collectType} payment
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label>Amount (₹)</Label>
@@ -321,13 +430,13 @@ export default function MonthlyLoans() {
                 placeholder="Enter amount"
               />
             </div>
-            
+
             {collectType === 'interest' && selectedLoan && (
               <p className="text-sm text-muted-foreground">
                 Monthly interest: {formatCurrency(getMonthlyInterest(selectedLoan))}
               </p>
             )}
-            
+
             {collectType === 'principal' && selectedLoan && (
               <p className="text-sm text-muted-foreground">
                 Outstanding principal: {formatCurrency(selectedLoan.outstandingPrincipal)}
@@ -348,6 +457,55 @@ export default function MonthlyLoans() {
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : null}
               Confirm Collection
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Disburse Confirmation Dialog */}
+      <Dialog open={!!disburseDialogLoan} onOpenChange={() => setDisburseDialogLoan(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Disburse Loan</DialogTitle>
+            <DialogDescription>
+              Confirm disbursement of {disburseDialogLoan?.loanNumber}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="py-4">
+            <div className="bg-muted rounded-lg p-4 space-y-2">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Principal Amount</span>
+                <span className="font-medium">
+                  {formatCurrency(disburseDialogLoan?.principalAmount || 0)}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Interest Rate</span>
+                <span className="font-medium">{disburseDialogLoan?.interestRate}% / month</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Term</span>
+                <span className="font-medium">{disburseDialogLoan?.termMonths} months</span>
+              </div>
+            </div>
+            <p className="text-sm text-muted-foreground mt-4">
+              This will mark the loan as <strong>ACTIVE</strong> and start the repayment schedule.
+              First month's interest will be deducted in advance.
+            </p>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDisburseDialogLoan(null)}>
+              Cancel
+            </Button>
+            <Button onClick={handleDisburse} disabled={isDisbursing}>
+              {isDisbursing ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Banknote className="mr-2 h-4 w-4" />
+              )}
+              Confirm Disbursement
             </Button>
           </DialogFooter>
         </DialogContent>
