@@ -120,10 +120,10 @@ export default function Borrowers() {
       setShowAddDialog(false);
       setForm({ ...emptyForm });
       fetchBorrowers();
-    } catch (err: any) {
+    } catch (err) {
       toast({
         title: "Failed to Create Borrower",
-        description: err?.message || "Something went wrong",
+        description: err instanceof Error ? err.message : "Something went wrong",
         variant: "destructive"
       });
     } finally {

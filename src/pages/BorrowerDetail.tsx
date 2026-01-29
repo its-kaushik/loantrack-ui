@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import {
   ArrowLeft,
@@ -14,7 +14,6 @@ import {
   CheckCircle2,
   CircleDashed,
   XCircle,
-  Clock,
   Pencil
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -45,12 +44,7 @@ export default function BorrowerDetail() {
   const [editForm, setEditForm] = useState<CreateBorrowerRequest>({ fullName: "", phone: "", address: "" });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  useEffect(() => {
-    if (!id) return;
-    fetchBorrowerDetails();
-  }, [id]);
-
-  const fetchBorrowerDetails = async () => {
+  const fetchBorrowerDetails = useCallback(async () => {
     if (!id) return;
     setIsLoading(true);
     try {
@@ -73,7 +67,12 @@ export default function BorrowerDetail() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [id]);
+
+  useEffect(() => {
+    if (!id) return;
+    fetchBorrowerDetails();
+  }, [id, fetchBorrowerDetails]);
 
   const openEditDialog = () => {
     if (!borrower) return;
@@ -131,10 +130,10 @@ export default function BorrowerDetail() {
       });
       setEditOpen(false);
       fetchBorrowerDetails();
-    } catch (err: any) {
+    } catch (err) {
       toast({
         title: "Failed to Update Borrower",
-        description: err?.message || "Something went wrong",
+        description: err instanceof Error ? err.message : "Something went wrong",
         variant: "destructive",
       });
     } finally {
