@@ -14,13 +14,25 @@ import {
   CheckCircle2,
   CircleDashed,
   XCircle,
-  Clock
+  Clock,
+  Pencil
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { api, Borrower, BorrowerStats, Loan, LoanStatus } from "@/lib/api";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { api, Borrower, BorrowerStats, CreateBorrowerRequest, Loan, LoanStatus } from "@/lib/api";
 import { toast } from "@/hooks/use-toast";
 
 export default function BorrowerDetail() {
@@ -29,6 +41,9 @@ export default function BorrowerDetail() {
   const [stats, setStats] = useState<BorrowerStats | null>(null);
   const [loans, setLoans] = useState<Loan[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [editOpen, setEditOpen] = useState(false);
+  const [editForm, setEditForm] = useState<CreateBorrowerRequest>({ fullName: "", phone: "", address: "" });
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -57,6 +72,73 @@ export default function BorrowerDetail() {
       });
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const openEditDialog = () => {
+    if (!borrower) return;
+    setEditForm({
+      fullName: borrower.fullName,
+      phone: borrower.phone,
+      altPhone: borrower.altPhone || "",
+      address: borrower.address,
+      city: borrower.city || "",
+      occupation: borrower.occupation || "",
+      monthlyIncome: borrower.monthlyIncome ? parseFloat(String(borrower.monthlyIncome)) : undefined,
+      idDocumentType: borrower.idDocumentType || "",
+      idDocumentNumber: borrower.idDocumentNumber || "",
+      photoUrl: borrower.photoUrl || "",
+      notes: borrower.notes || "",
+    });
+    setEditOpen(true);
+  };
+
+  const handleEditSubmit = async () => {
+    if (!id) return;
+    if (!editForm.fullName || editForm.fullName.length < 2) {
+      toast({ title: "Validation Error", description: "Full name must be at least 2 characters", variant: "destructive" });
+      return;
+    }
+    if (!editForm.phone || editForm.phone.length < 10) {
+      toast({ title: "Validation Error", description: "Phone must be at least 10 digits", variant: "destructive" });
+      return;
+    }
+    if (!editForm.address || editForm.address.length < 5) {
+      toast({ title: "Validation Error", description: "Address must be at least 5 characters", variant: "destructive" });
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const payload: CreateBorrowerRequest = {
+        fullName: editForm.fullName,
+        phone: editForm.phone,
+        address: editForm.address,
+      };
+      if (editForm.altPhone) payload.altPhone = editForm.altPhone;
+      if (editForm.city) payload.city = editForm.city;
+      if (editForm.occupation) payload.occupation = editForm.occupation;
+      if (editForm.monthlyIncome) payload.monthlyIncome = editForm.monthlyIncome;
+      if (editForm.idDocumentType) payload.idDocumentType = editForm.idDocumentType;
+      if (editForm.idDocumentNumber) payload.idDocumentNumber = editForm.idDocumentNumber;
+      if (editForm.photoUrl) payload.photoUrl = editForm.photoUrl;
+      if (editForm.notes) payload.notes = editForm.notes;
+
+      await api.updateBorrower(id, payload);
+      toast({
+        title: "Borrower Updated",
+        description: `${editForm.fullName} has been updated`,
+      });
+      setEditOpen(false);
+      fetchBorrowerDetails();
+    } catch (err: any) {
+      toast({
+        title: "Failed to Update Borrower",
+        description: err?.message || "Something went wrong",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -160,7 +242,7 @@ export default function BorrowerDetail() {
             {borrower.fullName.charAt(0).toUpperCase()}
           </div>
         )}
-        <div>
+        <div className="flex-1">
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-bold text-foreground">{borrower.fullName}</h1>
             {borrower.isBlacklisted ? (
@@ -176,6 +258,10 @@ export default function BorrowerDetail() {
             Member since {formatDate(borrower.createdAt)}
           </p>
         </div>
+        <Button variant="outline" onClick={openEditDialog}>
+          <Pencil className="mr-2 h-4 w-4" />
+          Edit
+        </Button>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
@@ -334,6 +420,142 @@ export default function BorrowerDetail() {
           </Card>
         </div>
       </div>
+
+      {/* Edit Borrower Dialog */}
+      <Dialog open={editOpen} onOpenChange={(open) => setEditOpen(open)}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Edit Borrower</DialogTitle>
+            <DialogDescription>Update borrower details. Fields marked with * are required.</DialogDescription>
+          </DialogHeader>
+
+          <div className="grid gap-4 py-4 max-h-[60vh] overflow-y-auto pr-2">
+            <div className="space-y-2">
+              <Label htmlFor="edit-fullName">Full Name *</Label>
+              <Input
+                id="edit-fullName"
+                placeholder="e.g. John Doe"
+                value={editForm.fullName}
+                onChange={(e) => setEditForm(f => ({ ...f, fullName: e.target.value }))}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="edit-phone">Phone *</Label>
+              <Input
+                id="edit-phone"
+                placeholder="e.g. 9876543210"
+                value={editForm.phone}
+                onChange={(e) => setEditForm(f => ({ ...f, phone: e.target.value }))}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="edit-address">Address *</Label>
+              <Input
+                id="edit-address"
+                placeholder="e.g. 123 Main Street, Apt 4"
+                value={editForm.address}
+                onChange={(e) => setEditForm(f => ({ ...f, address: e.target.value }))}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-city">City</Label>
+                <Input
+                  id="edit-city"
+                  placeholder="e.g. Mumbai"
+                  value={editForm.city || ""}
+                  onChange={(e) => setEditForm(f => ({ ...f, city: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-altPhone">Alt Phone</Label>
+                <Input
+                  id="edit-altPhone"
+                  placeholder="e.g. 9123456789"
+                  value={editForm.altPhone || ""}
+                  onChange={(e) => setEditForm(f => ({ ...f, altPhone: e.target.value }))}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-occupation">Occupation</Label>
+                <Input
+                  id="edit-occupation"
+                  placeholder="e.g. Software Engineer"
+                  value={editForm.occupation || ""}
+                  onChange={(e) => setEditForm(f => ({ ...f, occupation: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-monthlyIncome">Monthly Income</Label>
+                <Input
+                  id="edit-monthlyIncome"
+                  type="number"
+                  placeholder="e.g. 50000"
+                  value={editForm.monthlyIncome || ""}
+                  onChange={(e) => setEditForm(f => ({ ...f, monthlyIncome: e.target.value ? parseFloat(e.target.value) : undefined }))}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-idDocumentType">ID Document Type</Label>
+                <Input
+                  id="edit-idDocumentType"
+                  placeholder="e.g. Aadhar"
+                  value={editForm.idDocumentType || ""}
+                  onChange={(e) => setEditForm(f => ({ ...f, idDocumentType: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-idDocumentNumber">ID Document Number</Label>
+                <Input
+                  id="edit-idDocumentNumber"
+                  placeholder="e.g. 1234-5678-9012"
+                  value={editForm.idDocumentNumber || ""}
+                  onChange={(e) => setEditForm(f => ({ ...f, idDocumentNumber: e.target.value }))}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="edit-photoUrl">Photo URL</Label>
+              <Input
+                id="edit-photoUrl"
+                placeholder="e.g. https://example.com/photo.jpg"
+                value={editForm.photoUrl || ""}
+                onChange={(e) => setEditForm(f => ({ ...f, photoUrl: e.target.value }))}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="edit-notes">Notes</Label>
+              <Textarea
+                id="edit-notes"
+                placeholder="Any additional notes..."
+                value={editForm.notes || ""}
+                onChange={(e) => setEditForm(f => ({ ...f, notes: e.target.value }))}
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleEditSubmit} disabled={isSubmitting}>
+              {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Save Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
