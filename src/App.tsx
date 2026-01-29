@@ -11,6 +11,7 @@ import MonthlyLoans from "@/pages/MonthlyLoans";
 import DailyLoans from "@/pages/DailyLoans";
 import Borrowers from "@/pages/Borrowers";
 import LoanDetail from "@/pages/LoanDetail";
+import BorrowerDetail from "@/pages/BorrowerDetail";
 import Defaulters from "@/pages/Defaulters";
 import NotFound from "@/pages/NotFound";
 
@@ -40,6 +41,7 @@ const App = () => (
               <Route path="/loans/daily" element={<DailyLoans />} />
               <Route path="/loans/:id" element={<LoanDetail />} />
               <Route path="/borrowers" element={<Borrowers />} />
+              <Route path="/borrowers/:id" element={<BorrowerDetail />} />
               <Route path="/defaulters" element={<Defaulters />} />
             </Route>
 
