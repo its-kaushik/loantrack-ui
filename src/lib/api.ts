@@ -385,6 +385,9 @@ export interface ProfitReportParams {
 class ApiClient {
   private baseUrl: string;
   private accessToken: string | null = null;
+  private isRefreshing = false;
+  private refreshQueue: Array<{ resolve: () => void; reject: (err: unknown) => void }> = [];
+  private onAuthFailure: (() => void) | null = null;
 
   constructor(baseUrl: string = API_BASE_URL) {
     this.baseUrl = baseUrl;
@@ -406,13 +409,20 @@ class ApiClient {
     return this.accessToken;
   }
 
+  setOnAuthFailure(cb: (() => void) | null): void {
+    this.onAuthFailure = cb;
+  }
+
+  // Endpoints that should never trigger a token refresh (to avoid infinite loops)
+  private static AUTH_SKIP_REFRESH = ['/auth/login', '/auth/refresh', '/auth/register'];
+
   // Base fetch method
   private async request<T>(
     endpoint: string,
     options: RequestInit = {}
   ): Promise<T> {
     const url = `${this.baseUrl}${endpoint}`;
-    
+
     const headers: HeadersInit = {
       'Content-Type': 'application/json',
       ...options.headers,
@@ -427,6 +437,34 @@ class ApiClient {
       headers,
     });
 
+    // Handle 401 with automatic token refresh
+    if (
+      response.status === 401 &&
+      !ApiClient.AUTH_SKIP_REFRESH.some((path) => endpoint.startsWith(path))
+    ) {
+      await this.handleTokenRefresh();
+      // Retry the original request with the new token
+      const retryHeaders: HeadersInit = {
+        'Content-Type': 'application/json',
+        ...options.headers,
+      };
+      if (this.accessToken) {
+        (retryHeaders as Record<string, string>)['Authorization'] = `Bearer ${this.accessToken}`;
+      }
+      const retryResponse = await fetch(url, { ...options, headers: retryHeaders });
+      const retryData = await retryResponse.json();
+      if (!retryResponse.ok) {
+        const error = retryData as ErrorResponse;
+        throw new ApiError(
+          error.error?.code || 'UNKNOWN_ERROR',
+          error.error?.message || 'An unknown error occurred',
+          retryResponse.status,
+          error.error?.details
+        );
+      }
+      return retryData;
+    }
+
     const data = await response.json();
 
     if (!response.ok) {
@@ -440,6 +478,58 @@ class ApiClient {
     }
 
     return data;
+  }
+
+  /**
+   * Handles token refresh with queuing so only one refresh happens at a time.
+   * If a refresh is already in progress, the caller waits in the queue.
+   */
+  private handleTokenRefresh(): Promise<void> {
+    if (this.isRefreshing) {
+      // Another request is already refreshing — wait for it
+      return new Promise<void>((resolve, reject) => {
+        this.refreshQueue.push({ resolve, reject });
+      });
+    }
+
+    this.isRefreshing = true;
+
+    return new Promise<void>(async (resolve, reject) => {
+      try {
+        const storedRefreshToken = localStorage.getItem('refreshToken');
+        if (!storedRefreshToken) {
+          throw new Error('No refresh token available');
+        }
+
+        const response = await this.post<SuccessResponse<AuthTokens>>(
+          '/auth/refresh',
+          { refreshToken: storedRefreshToken }
+        );
+
+        if (response.success && response.data.accessToken) {
+          this.setAccessToken(response.data.accessToken);
+          if (response.data.refreshToken) {
+            localStorage.setItem('refreshToken', response.data.refreshToken);
+          }
+        }
+
+        // Resolve all queued requests so they can retry
+        this.refreshQueue.forEach((queued) => queued.resolve());
+        resolve();
+      } catch (err) {
+        // Refresh failed — clear auth state and force logout
+        this.setAccessToken(null);
+        localStorage.removeItem('refreshToken');
+        this.onAuthFailure?.();
+
+        // Reject all queued requests
+        this.refreshQueue.forEach((queued) => queued.reject(err));
+        reject(err);
+      } finally {
+        this.refreshQueue = [];
+        this.isRefreshing = false;
+      }
+    });
   }
 
   // Helper methods for different HTTP methods

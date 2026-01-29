@@ -23,7 +23,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(null);
         return;
       }
-      
+
+      // getProfile will automatically attempt token refresh on 401
       const response = await api.getProfile();
       if (response.success) {
         setUser(response.data);
@@ -32,7 +33,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.error('Failed to fetch user profile:', error);
       setUser(null);
       api.setAccessToken(null);
+      localStorage.removeItem('refreshToken');
     }
+  }, []);
+
+  // Register a callback so the API client can force logout when token refresh fails
+  useEffect(() => {
+    api.setOnAuthFailure(() => {
+      setUser(null);
+      localStorage.removeItem('refreshToken');
+    });
+    return () => {
+      api.setOnAuthFailure(null);
+    };
   }, []);
 
   useEffect(() => {
