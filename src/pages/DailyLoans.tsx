@@ -37,6 +37,7 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { api, Loan, LoanStatus, Borrower, CreateLoanRequest } from "@/lib/api";
 import { toast } from "@/hooks/use-toast";
 
@@ -55,9 +56,12 @@ export default function DailyLoans() {
   const [isLoading, setIsLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<LoanStatus | 'ALL'>('ALL');
   const [selectedLoan, setSelectedLoan] = useState<DailyLoanCard | null>(null);
+  const [collectAmount, setCollectAmount] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState("CASH");
   const [isCollecting, setIsCollecting] = useState(false);
   const [isDisbursing, setIsDisbursing] = useState(false);
   const [disburseDialogLoan, setDisburseDialogLoan] = useState<Loan | null>(null);
+  const [disburseDate, setDisburseDate] = useState("");
 
   // Create loan state
   const [showCreateDialog, setShowCreateDialog] = useState(false);
@@ -232,12 +236,14 @@ export default function DailyLoans() {
     if (!disburseDialogLoan) return;
     setIsDisbursing(true);
     try {
-      await api.disburseLoan(disburseDialogLoan.id);
+      const body = disburseDate ? { disbursementDate: disburseDate } : undefined;
+      await api.disburseLoan(disburseDialogLoan.id, body);
       toast({
         title: "Loan Disbursed",
         description: `${disburseDialogLoan.loanNumber} is now ACTIVE`,
       });
       setDisburseDialogLoan(null);
+      setDisburseDate("");
       fetchLoans();
     } catch (err) {
       toast({
@@ -297,18 +303,30 @@ export default function DailyLoans() {
     }
   };
 
-  const handleFillBox = async () => {
+  const openCollectDialog = (card: DailyLoanCard) => {
+    setSelectedLoan(card);
+    setCollectAmount(card.dailyAmount.toString());
+    setPaymentMethod("CASH");
+  };
+
+  const handleCollectDaily = async () => {
     if (!selectedLoan) return;
-    
+    const amount = parseFloat(collectAmount);
+    if (!amount || amount <= 0) {
+      toast({ title: "Validation Error", description: "Amount must be greater than 0", variant: "destructive" });
+      return;
+    }
+
     setIsCollecting(true);
     try {
-      const nextBox = selectedLoan.filledBoxes + 1;
-      await api.collectDailyPayment(selectedLoan.loan.id, { dayNumber: nextBox });
+      const response = await api.collectDailyPayment(selectedLoan.loan.id, { amount, paymentMethod });
+      const daysCount = response.data?.daysMarked?.length || 1;
       toast({
         title: "Payment Collected",
-        description: `Box #${nextBox} filled for ${selectedLoan.loan.loanNumber}`,
+        description: `${formatCurrency(amount)} collected — ${daysCount} day${daysCount > 1 ? 's' : ''} marked for ${selectedLoan.loan.loanNumber}`,
       });
       setSelectedLoan(null);
+      setCollectAmount("");
       fetchLoans();
     } catch (err) {
       toast({
@@ -595,10 +613,10 @@ export default function DailyLoans() {
                     <Button
                       size="sm"
                       className="flex-1"
-                      onClick={() => setSelectedLoan(card)}
+                      onClick={() => openCollectDialog(card)}
                       disabled={card.filledBoxes >= card.totalBoxes}
                     >
-                      Fill Box #{card.filledBoxes + 1}
+                      Collect Payment
                     </Button>
                     <Link to={`/loans/${card.loan.id}`}>
                       <Button size="sm" variant="outline">
@@ -622,51 +640,79 @@ export default function DailyLoans() {
         </Card>
       )}
 
-      {/* Fill Box Confirmation Dialog */}
-      <Dialog open={!!selectedLoan} onOpenChange={() => setSelectedLoan(null)}>
+      {/* Collect Payment Dialog */}
+      <Dialog open={!!selectedLoan} onOpenChange={() => { setSelectedLoan(null); setCollectAmount(""); setPaymentMethod("CASH"); }}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Fill Box #{selectedLoan?.filledBoxes ? selectedLoan.filledBoxes + 1 : 1}</DialogTitle>
+            <DialogTitle>Collect Daily Payment</DialogTitle>
             <DialogDescription>
-              {selectedLoan?.loan.loanNumber} - Record today's payment
+              {selectedLoan?.loan.loanNumber}
+              {selectedLoan?.loan.borrower?.fullName && ` — ${selectedLoan.loan.borrower.fullName}`}
             </DialogDescription>
           </DialogHeader>
 
-          <div className="py-4">
+          <div className="space-y-4 py-4">
             <div className="bg-muted rounded-lg p-4 space-y-2">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Daily Amount</span>
-                <span className="font-medium">
-                  {formatCurrency(selectedLoan?.dailyAmount || 0)}
-                </span>
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Daily Installment</span>
+                <span className="font-medium">{formatCurrency(selectedLoan?.dailyAmount || 0)}</span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Box Number</span>
-                <span className="font-medium">
-                  #{selectedLoan?.filledBoxes ? selectedLoan.filledBoxes + 1 : 1} of {selectedLoan?.totalBoxes}
-                </span>
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Progress</span>
+                <span className="font-medium">{selectedLoan?.filledBoxes}/{selectedLoan?.totalBoxes} days</span>
               </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Amount (₹)</Label>
+              <Input
+                type="number"
+                value={collectAmount}
+                onChange={(e) => setCollectAmount(e.target.value)}
+                placeholder="Enter amount"
+              />
+              <p className="text-xs text-muted-foreground">
+                Enter the daily installment for 1 day, or a larger amount to cover multiple days
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Payment Method</Label>
+              <RadioGroup value={paymentMethod} onValueChange={setPaymentMethod} className="flex gap-4">
+                <div className="flex items-center gap-2">
+                  <RadioGroupItem value="CASH" id="pm-cash" />
+                  <Label htmlFor="pm-cash" className="font-normal cursor-pointer">Cash</Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <RadioGroupItem value="UPI" id="pm-upi" />
+                  <Label htmlFor="pm-upi" className="font-normal cursor-pointer">UPI</Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <RadioGroupItem value="BANK_TRANSFER" id="pm-bank" />
+                  <Label htmlFor="pm-bank" className="font-normal cursor-pointer">Bank Transfer</Label>
+                </div>
+              </RadioGroup>
             </div>
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setSelectedLoan(null)}>
+            <Button variant="outline" onClick={() => { setSelectedLoan(null); setCollectAmount(""); setPaymentMethod("CASH"); }}>
               Cancel
             </Button>
-            <Button onClick={handleFillBox} disabled={isCollecting}>
+            <Button onClick={handleCollectDaily} disabled={isCollecting || !collectAmount}>
               {isCollecting ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : (
                 <Check className="mr-2 h-4 w-4" />
               )}
-              Confirm Payment
+              Collect
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       {/* Disburse Confirmation Dialog */}
-      <Dialog open={!!disburseDialogLoan} onOpenChange={() => setDisburseDialogLoan(null)}>
+      <Dialog open={!!disburseDialogLoan} onOpenChange={() => { setDisburseDialogLoan(null); setDisburseDate(""); }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Disburse Loan</DialogTitle>
@@ -675,7 +721,7 @@ export default function DailyLoans() {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="py-4">
+          <div className="space-y-4 py-4">
             <div className="bg-muted rounded-lg p-4 space-y-2">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Principal Amount</span>
@@ -692,14 +738,28 @@ export default function DailyLoans() {
                 <span className="font-medium">{disburseDialogLoan?.termDays} days</span>
               </div>
             </div>
-            <p className="text-sm text-muted-foreground mt-4">
+
+            <div className="space-y-2">
+              <Label>Disbursement Date</Label>
+              <Input
+                type="date"
+                value={disburseDate}
+                max={new Date().toISOString().split('T')[0]}
+                onChange={(e) => setDisburseDate(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">
+                Leave empty to use today's date. Set a past date for onboarding existing loans.
+              </p>
+            </div>
+
+            <p className="text-sm text-muted-foreground">
               This will mark the loan as <strong>ACTIVE</strong> and create the daily payment card
               with {disburseDialogLoan?.termDays} boxes.
             </p>
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDisburseDialogLoan(null)}>
+            <Button variant="outline" onClick={() => { setDisburseDialogLoan(null); setDisburseDate(""); }}>
               Cancel
             </Button>
             <Button onClick={handleDisburse} disabled={isDisbursing}>

@@ -57,6 +57,7 @@ export default function MonthlyLoans() {
   const [isCollecting, setIsCollecting] = useState(false);
   const [isDisbursing, setIsDisbursing] = useState(false);
   const [disburseDialogLoan, setDisburseDialogLoan] = useState<Loan | null>(null);
+  const [disburseDate, setDisburseDate] = useState("");
 
   // Create loan state
   const [showCreateDialog, setShowCreateDialog] = useState(false);
@@ -175,12 +176,14 @@ export default function MonthlyLoans() {
     if (!disburseDialogLoan) return;
     setIsDisbursing(true);
     try {
-      await api.disburseLoan(disburseDialogLoan.id);
+      const body = disburseDate ? { disbursementDate: disburseDate } : undefined;
+      await api.disburseLoan(disburseDialogLoan.id, body);
       toast({
         title: "Loan Disbursed",
         description: `${disburseDialogLoan.loanNumber} is now ACTIVE`,
       });
       setDisburseDialogLoan(null);
+      setDisburseDate("");
       fetchLoans();
     } catch (err) {
       toast({
@@ -625,7 +628,7 @@ export default function MonthlyLoans() {
       </Dialog>
 
       {/* Disburse Confirmation Dialog */}
-      <Dialog open={!!disburseDialogLoan} onOpenChange={() => setDisburseDialogLoan(null)}>
+      <Dialog open={!!disburseDialogLoan} onOpenChange={() => { setDisburseDialogLoan(null); setDisburseDate(""); }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Disburse Loan</DialogTitle>
@@ -634,7 +637,7 @@ export default function MonthlyLoans() {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="py-4">
+          <div className="space-y-4 py-4">
             <div className="bg-muted rounded-lg p-4 space-y-2">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Principal Amount</span>
@@ -647,14 +650,28 @@ export default function MonthlyLoans() {
                 <span className="font-medium">{((Number(disburseDialogLoan?.interestRate) || 0) * 100).toFixed(0)}% / month</span>
               </div>
             </div>
-            <p className="text-sm text-muted-foreground mt-4">
+
+            <div className="space-y-2">
+              <Label>Disbursement Date</Label>
+              <Input
+                type="date"
+                value={disburseDate}
+                max={new Date().toISOString().split('T')[0]}
+                onChange={(e) => setDisburseDate(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">
+                Leave empty to use today's date. Set a past date for onboarding existing loans.
+              </p>
+            </div>
+
+            <p className="text-sm text-muted-foreground">
               This will mark the loan as <strong>ACTIVE</strong> and start the repayment schedule.
               First month's interest will be deducted in advance.
             </p>
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDisburseDialogLoan(null)}>
+            <Button variant="outline" onClick={() => { setDisburseDialogLoan(null); setDisburseDate(""); }}>
               Cancel
             </Button>
             <Button onClick={handleDisburse} disabled={isDisbursing}>

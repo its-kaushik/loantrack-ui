@@ -271,8 +271,9 @@ export interface UpdateLoanStatusRequest {
 }
 
 export interface CollectDailyPaymentRequest {
-  dayNumber: number;
-  paymentDate?: string;
+  amount: number;
+  paymentMethod?: string;
+  collectedBy?: string;
   notes?: string;
 }
 
@@ -758,8 +759,8 @@ class ApiClient {
     return this.get(`/loans/${id}/card`);
   }
 
-  async disburseLoan(id: string): Promise<SuccessResponse<Loan>> {
-    return this.post(`/loans/${id}/disburse`);
+  async disburseLoan(id: string, data?: { disbursementDate?: string }): Promise<SuccessResponse<Loan>> {
+    return this.post(`/loans/${id}/disburse`, data);
   }
 
   async updateLoanStatus(id: string, data: UpdateLoanStatusRequest): Promise<SuccessResponse<Loan>> {
