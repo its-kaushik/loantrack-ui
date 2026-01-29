@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { 
-  Users, 
-  Search, 
-  Loader2, 
+import {
+  Users,
+  Search,
+  Loader2,
   RefreshCw,
   Phone,
   MapPin,
@@ -15,6 +15,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Table,
   TableBody,
@@ -23,21 +24,38 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { api, Borrower } from "@/lib/api";
+import { api, Borrower, CreateBorrowerRequest } from "@/lib/api";
 import { toast } from "@/hooks/use-toast";
+
+const emptyForm: CreateBorrowerRequest = {
+  fullName: "",
+  phone: "",
+  address: "",
+};
 
 export default function Borrowers() {
   const [borrowers, setBorrowers] = useState<Borrower[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const [showAddDialog, setShowAddDialog] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [form, setForm] = useState<CreateBorrowerRequest>({ ...emptyForm });
 
   const fetchBorrowers = async () => {
     setIsLoading(true);
     try {
-      const response = await api.getBorrowers({ 
+      const response = await api.getBorrowers({
         search: searchQuery || undefined,
-        limit: 50 
+        limit: 50
       });
       if (response.success) {
         setBorrowers(response.data);
@@ -64,6 +82,54 @@ export default function Borrowers() {
     }, 300);
     return () => clearTimeout(debounce);
   }, [searchQuery]);
+
+  const handleAddBorrower = async () => {
+    if (!form.fullName || form.fullName.length < 2) {
+      toast({ title: "Validation Error", description: "Full name must be at least 2 characters", variant: "destructive" });
+      return;
+    }
+    if (!form.phone || form.phone.length < 10) {
+      toast({ title: "Validation Error", description: "Phone must be at least 10 digits", variant: "destructive" });
+      return;
+    }
+    if (!form.address || form.address.length < 5) {
+      toast({ title: "Validation Error", description: "Address must be at least 5 characters", variant: "destructive" });
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const payload: CreateBorrowerRequest = {
+        fullName: form.fullName,
+        phone: form.phone,
+        address: form.address,
+      };
+      if (form.altPhone) payload.altPhone = form.altPhone;
+      if (form.city) payload.city = form.city;
+      if (form.occupation) payload.occupation = form.occupation;
+      if (form.monthlyIncome) payload.monthlyIncome = form.monthlyIncome;
+      if (form.idDocumentType) payload.idDocumentType = form.idDocumentType;
+      if (form.idDocumentNumber) payload.idDocumentNumber = form.idDocumentNumber;
+      if (form.notes) payload.notes = form.notes;
+
+      await api.createBorrower(payload);
+      toast({
+        title: "Borrower Created",
+        description: `${form.fullName} has been added`,
+      });
+      setShowAddDialog(false);
+      setForm({ ...emptyForm });
+      fetchBorrowers();
+    } catch (err: any) {
+      toast({
+        title: "Failed to Create Borrower",
+        description: err?.message || "Something went wrong",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-IN', {
@@ -101,7 +167,7 @@ export default function Borrowers() {
           </h1>
           <p className="text-muted-foreground">Manage your borrower database</p>
         </div>
-        <Button>
+        <Button onClick={() => setShowAddDialog(true)}>
           <Plus className="mr-2 h-4 w-4" />
           Add Borrower
         </Button>
@@ -180,14 +246,18 @@ export default function Borrowers() {
                       )}
                     </TableCell>
                     <TableCell>
-                      <div className="flex items-center gap-1 text-sm">
-                        <MapPin className="h-3 w-3 text-muted-foreground" />
-                        {borrower.city}
-                      </div>
+                      {borrower.city ? (
+                        <div className="flex items-center gap-1 text-sm">
+                          <MapPin className="h-3 w-3 text-muted-foreground" />
+                          {borrower.city}
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground">-</span>
+                      )}
                     </TableCell>
                     <TableCell>
                       {borrower.monthlyIncome ? (
-                        <span className="text-sm">{formatCurrency(borrower.monthlyIncome)}/mo</span>
+                        <span className="text-sm">{formatCurrency(parseFloat(borrower.monthlyIncome))}/mo</span>
                       ) : (
                         <span className="text-muted-foreground">-</span>
                       )}
@@ -205,10 +275,12 @@ export default function Borrowers() {
                       )}
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button size="sm" variant="ghost">
-                        View Details
-                        <ChevronRight className="ml-1 h-4 w-4" />
-                      </Button>
+                      <Link to={`/borrowers/${borrower.id}`}>
+                        <Button size="sm" variant="ghost">
+                          View Details
+                          <ChevronRight className="ml-1 h-4 w-4" />
+                        </Button>
+                      </Link>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -225,6 +297,137 @@ export default function Borrowers() {
           )}
         </CardContent>
       </Card>
+
+      {/* Add Borrower Dialog */}
+      <Dialog open={showAddDialog} onOpenChange={(open) => {
+        setShowAddDialog(open);
+        if (!open) setForm({ ...emptyForm });
+      }}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Add New Borrower</DialogTitle>
+            <DialogDescription>Enter borrower details. Fields marked with * are required.</DialogDescription>
+          </DialogHeader>
+
+          <div className="grid gap-4 py-4 max-h-[60vh] overflow-y-auto pr-2">
+            {/* Required fields */}
+            <div className="space-y-2">
+              <Label htmlFor="fullName">Full Name *</Label>
+              <Input
+                id="fullName"
+                placeholder="e.g. John Doe"
+                value={form.fullName}
+                onChange={(e) => setForm(f => ({ ...f, fullName: e.target.value }))}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="phone">Phone *</Label>
+              <Input
+                id="phone"
+                placeholder="e.g. 9876543210"
+                value={form.phone}
+                onChange={(e) => setForm(f => ({ ...f, phone: e.target.value }))}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="address">Address *</Label>
+              <Input
+                id="address"
+                placeholder="e.g. 123 Main Street, Apt 4"
+                value={form.address}
+                onChange={(e) => setForm(f => ({ ...f, address: e.target.value }))}
+              />
+            </div>
+
+            {/* Optional fields */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="city">City</Label>
+                <Input
+                  id="city"
+                  placeholder="e.g. Mumbai"
+                  value={form.city || ""}
+                  onChange={(e) => setForm(f => ({ ...f, city: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="altPhone">Alt Phone</Label>
+                <Input
+                  id="altPhone"
+                  placeholder="e.g. 9123456789"
+                  value={form.altPhone || ""}
+                  onChange={(e) => setForm(f => ({ ...f, altPhone: e.target.value }))}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="occupation">Occupation</Label>
+                <Input
+                  id="occupation"
+                  placeholder="e.g. Software Engineer"
+                  value={form.occupation || ""}
+                  onChange={(e) => setForm(f => ({ ...f, occupation: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="monthlyIncome">Monthly Income</Label>
+                <Input
+                  id="monthlyIncome"
+                  type="number"
+                  placeholder="e.g. 50000"
+                  value={form.monthlyIncome || ""}
+                  onChange={(e) => setForm(f => ({ ...f, monthlyIncome: e.target.value ? parseFloat(e.target.value) : undefined }))}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="idDocumentType">ID Document Type</Label>
+                <Input
+                  id="idDocumentType"
+                  placeholder="e.g. Aadhar"
+                  value={form.idDocumentType || ""}
+                  onChange={(e) => setForm(f => ({ ...f, idDocumentType: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="idDocumentNumber">ID Document Number</Label>
+                <Input
+                  id="idDocumentNumber"
+                  placeholder="e.g. 1234-5678-9012"
+                  value={form.idDocumentNumber || ""}
+                  onChange={(e) => setForm(f => ({ ...f, idDocumentNumber: e.target.value }))}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="notes">Notes</Label>
+              <Input
+                id="notes"
+                placeholder="Any additional notes..."
+                value={form.notes || ""}
+                onChange={(e) => setForm(f => ({ ...f, notes: e.target.value }))}
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setShowAddDialog(false); setForm({ ...emptyForm }); }}>
+              Cancel
+            </Button>
+            <Button onClick={handleAddBorrower} disabled={isSubmitting}>
+              {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Add Borrower
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

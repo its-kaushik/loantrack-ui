@@ -128,17 +128,17 @@ export interface Borrower {
   id: string;
   fullName: string;
   phone: string;
-  altPhone?: string;
+  altPhone?: string | null;
   address: string;
-  city: string;
-  idDocumentType?: string;
-  idDocumentNumber?: string;
-  occupation?: string;
-  monthlyIncome?: number;
-  photoUrl?: string;
+  city?: string | null;
+  idDocumentType?: string | null;
+  idDocumentNumber?: string | null;
+  occupation?: string | null;
+  monthlyIncome?: string | null; // Decimal string from API e.g. "75000.00"
+  photoUrl?: string | null;
   isBlacklisted: boolean;
-  blacklistReason?: string;
-  notes?: string;
+  blacklistReason?: string | null;
+  notes?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -148,7 +148,7 @@ export interface CreateBorrowerRequest {
   phone: string;
   altPhone?: string;
   address: string;
-  city: string;
+  city?: string;
   idDocumentType?: string;
   idDocumentNumber?: string;
   occupation?: string;
