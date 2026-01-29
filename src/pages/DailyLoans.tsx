@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { Link } from "react-router-dom";
 import {
   CalendarDays,
@@ -12,7 +12,9 @@ import {
   Banknote,
   CheckCircle2,
   XCircle,
-  CircleDashed
+  CircleDashed,
+  Plus,
+  Search
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -33,7 +35,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { api, Loan, LoanStatus } from "@/lib/api";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { api, Loan, LoanStatus, Borrower, CreateLoanRequest } from "@/lib/api";
 import { toast } from "@/hooks/use-toast";
 
 interface DailyLoanCard {
@@ -55,35 +59,137 @@ export default function DailyLoans() {
   const [isDisbursing, setIsDisbursing] = useState(false);
   const [disburseDialogLoan, setDisburseDialogLoan] = useState<Loan | null>(null);
 
+  // Create loan state
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [createForm, setCreateForm] = useState({
+    principalAmount: "",
+    interestRate: "5",
+    termDays: "120",
+  });
+  const [isCreating, setIsCreating] = useState(false);
+  const [borrowerSearch, setBorrowerSearch] = useState("");
+  const [borrowerResults, setBorrowerResults] = useState<Borrower[]>([]);
+  const [selectedBorrower, setSelectedBorrower] = useState<Borrower | null>(null);
+  const [showBorrowerDropdown, setShowBorrowerDropdown] = useState(false);
+  const borrowerSearchRef = useRef<HTMLDivElement>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const searchBorrowers = useCallback(async (query: string) => {
+    if (query.length < 2) {
+      setBorrowerResults([]);
+      setShowBorrowerDropdown(false);
+      return;
+    }
+    try {
+      const response = await api.getBorrowers({ search: query, limit: 10 });
+      if (response.success) {
+        setBorrowerResults(response.data);
+        setShowBorrowerDropdown(response.data.length > 0);
+      }
+    } catch {
+      setBorrowerResults([]);
+    }
+  }, []);
+
+  const handleBorrowerSearchChange = (value: string) => {
+    setBorrowerSearch(value);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => searchBorrowers(value), 300);
+  };
+
+  const selectBorrower = (borrower: Borrower) => {
+    setSelectedBorrower(borrower);
+    setBorrowerSearch("");
+    setBorrowerResults([]);
+    setShowBorrowerDropdown(false);
+  };
+
+  const clearSelectedBorrower = () => {
+    setSelectedBorrower(null);
+    setBorrowerSearch("");
+  };
+
+  const resetCreateForm = () => {
+    setCreateForm({ principalAmount: "", interestRate: "5", termDays: "120" });
+    setSelectedBorrower(null);
+    setBorrowerSearch("");
+    setBorrowerResults([]);
+    setShowBorrowerDropdown(false);
+  };
+
+  const handleCreateLoan = async () => {
+    if (!selectedBorrower) {
+      toast({ title: "Validation Error", description: "Please select a borrower", variant: "destructive" });
+      return;
+    }
+    const principal = parseFloat(createForm.principalAmount);
+    const rate = parseFloat(createForm.interestRate);
+    const term = parseInt(createForm.termDays);
+    if (!principal || principal <= 0) {
+      toast({ title: "Validation Error", description: "Principal amount must be greater than 0", variant: "destructive" });
+      return;
+    }
+    if (!rate || rate <= 0) {
+      toast({ title: "Validation Error", description: "Interest rate must be greater than 0", variant: "destructive" });
+      return;
+    }
+    if (!term || term <= 0) {
+      toast({ title: "Validation Error", description: "Term in days must be greater than 0", variant: "destructive" });
+      return;
+    }
+
+    setIsCreating(true);
+    try {
+      const payload: CreateLoanRequest = {
+        borrowerId: selectedBorrower.id,
+        loanTypeCode: "TYPE_B_DAILY",
+        principalAmount: principal,
+        interestRate: rate / 100,
+        termDays: term,
+      };
+
+      await api.createLoan(payload);
+      toast({ title: "Loan Created", description: "Daily loan has been created successfully" });
+      setShowCreateDialog(false);
+      resetCreateForm();
+      fetchLoans();
+    } catch {
+      toast({ title: "Error", description: "Failed to create loan", variant: "destructive" });
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
   const fetchLoans = async () => {
     setIsLoading(true);
     try {
-      const response = await api.getLoans(statusFilter === 'ALL' ? {} : { status: statusFilter });
+      const params: Record<string, string> = { loanTypeCode: 'TYPE_B_DAILY' };
+      if (statusFilter !== 'ALL') params.status = statusFilter;
+      const response = await api.getLoans(params as import("@/lib/api").LoansQueryParams);
       if (response.success) {
-        // Filter for daily loans (Type B has termDays)
-        const dailyLoans = response.data.filter(loan => loan.termDays && loan.termDays > 0);
+        const dailyLoans = response.data;
         setLoans(dailyLoans);
 
         // Calculate card data for ACTIVE loans only
         const activeLoans = dailyLoans.filter(loan => loan.status === 'ACTIVE');
         const cards: DailyLoanCard[] = activeLoans.map(loan => {
           const totalBoxes = loan.termDays || 100;
-          const startDate = new Date(loan.startDate);
+          const loanStartDate = new Date(loan.disbursementDate || loan.applicationDate || loan.createdAt);
           const today = new Date();
-          const daysSinceStart = Math.floor((today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+          const daysSinceStart = Math.floor((today.getTime() - loanStartDate.getTime()) / (1000 * 60 * 60 * 24));
 
-          // Parse numeric values (API might return strings)
+          // Parse numeric values (API returns decimal strings)
           const principalAmount = Number(loan.principalAmount) || 0;
-          const totalExpectedAmount = Number(loan.totalExpectedAmount) || principalAmount;
+          const totalExpectedRepayment = Number(loan.totalExpectedRepayment) || principalAmount;
           const totalPrincipalPaid = Number(loan.totalPrincipalPaid) || 0;
           const totalInterestPaid = Number(loan.totalInterestPaid) || 0;
-          const dailyInstallment = Number(loan.dailyInstallment) || 0;
+          const dailyInstallmentAmount = Number(loan.dailyInstallmentAmount) || 0;
 
-          // Calculate daily amount - use dailyInstallment if valid, otherwise calculate from total
-          const dailyAmount = dailyInstallment > 0
-            ? dailyInstallment
-            : totalExpectedAmount > 0
-              ? totalExpectedAmount / totalBoxes
+          // Calculate daily amount - use dailyInstallmentAmount if valid, otherwise calculate from total
+          const dailyAmount = dailyInstallmentAmount > 0
+            ? dailyInstallmentAmount
+            : totalExpectedRepayment > 0
+              ? totalExpectedRepayment / totalBoxes
               : principalAmount / totalBoxes;
 
           // Calculate filled boxes based on payments made
@@ -251,6 +357,10 @@ export default function DailyLoans() {
             <RefreshCw className="mr-2 h-4 w-4" />
             Refresh
           </Button>
+          <Button onClick={() => setShowCreateDialog(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            New Loan
+          </Button>
         </div>
       </div>
 
@@ -335,6 +445,7 @@ export default function DailyLoans() {
                         {loan.loanNumber}
                       </Link>
                       <p className="text-sm text-muted-foreground">
+                        {loan.borrower?.fullName && <>{loan.borrower.fullName} • </>}
                         {formatCurrency(loan.principalAmount)} • {loan.termDays} days
                       </p>
                     </div>
@@ -373,6 +484,7 @@ export default function DailyLoans() {
                         {loan.loanNumber}
                       </Link>
                       <p className="text-sm text-muted-foreground">
+                        {loan.borrower?.fullName && <>{loan.borrower.fullName} • </>}
                         {formatCurrency(loan.principalAmount)}
                       </p>
                     </div>
@@ -417,6 +529,7 @@ export default function DailyLoans() {
                         </Link>
                       </CardTitle>
                       <CardDescription>
+                        {card.loan.borrower?.fullName && <>{card.loan.borrower.fullName} • </>}
                         {formatCurrency(card.dailyAmount)}/day
                       </CardDescription>
                     </div>
@@ -571,14 +684,8 @@ export default function DailyLoans() {
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Daily Installment</span>
-                <span className="font-medium">
-                  {formatCurrency(
-                    Number(disburseDialogLoan?.dailyInstallment) ||
-                    (Number(disburseDialogLoan?.totalExpectedAmount || disburseDialogLoan?.principalAmount || 0) /
-                    (disburseDialogLoan?.termDays || 100))
-                  )}
-                </span>
+                <span className="text-muted-foreground">Interest Rate</span>
+                <span className="font-medium">{((disburseDialogLoan?.interestRate || 0) * 100).toFixed(0)}% / month</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Term</span>
@@ -602,6 +709,109 @@ export default function DailyLoans() {
                 <Banknote className="mr-2 h-4 w-4" />
               )}
               Confirm Disbursement
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Create Loan Dialog */}
+      <Dialog open={showCreateDialog} onOpenChange={(open) => {
+        setShowCreateDialog(open);
+        if (!open) resetCreateForm();
+      }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Create Daily Loan</DialogTitle>
+            <DialogDescription>
+              Create a new Type B daily collection loan
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            {/* Borrower Search */}
+            <div className="space-y-2">
+              <Label>Borrower *</Label>
+              {selectedBorrower ? (
+                <div className="flex items-center gap-2 p-2 border rounded-md bg-muted/50">
+                  <span className="flex-1 text-sm font-medium">{selectedBorrower.fullName}</span>
+                  <span className="text-xs text-muted-foreground">{selectedBorrower.phone}</span>
+                  <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={clearSelectedBorrower}>
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              ) : (
+                <div className="relative" ref={borrowerSearchRef}>
+                  <div className="relative">
+                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Search borrower by name or phone..."
+                      value={borrowerSearch}
+                      onChange={(e) => handleBorrowerSearchChange(e.target.value)}
+                      className="pl-9"
+                    />
+                  </div>
+                  {showBorrowerDropdown && borrowerResults.length > 0 && (
+                    <div className="absolute z-50 w-full mt-1 bg-popover border rounded-md shadow-md max-h-48 overflow-y-auto">
+                      {borrowerResults.map((b) => (
+                        <button
+                          key={b.id}
+                          type="button"
+                          className="w-full text-left px-3 py-2 hover:bg-accent text-sm flex justify-between items-center"
+                          onClick={() => selectBorrower(b)}
+                        >
+                          <span className="font-medium">{b.fullName}</span>
+                          <span className="text-muted-foreground text-xs">{b.phone}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Principal Amount */}
+            <div className="space-y-2">
+              <Label>Principal Amount (₹) *</Label>
+              <Input
+                type="number"
+                placeholder="e.g. 100000"
+                value={createForm.principalAmount}
+                onChange={(e) => setCreateForm({ ...createForm, principalAmount: e.target.value })}
+              />
+            </div>
+
+            {/* Interest Rate */}
+            <div className="space-y-2">
+              <Label>Interest Rate (% per month) *</Label>
+              <Input
+                type="number"
+                placeholder="e.g. 5"
+                value={createForm.interestRate}
+                onChange={(e) => setCreateForm({ ...createForm, interestRate: e.target.value })}
+              />
+              <p className="text-xs text-muted-foreground">Enter as whole number, e.g. 5 for 5% per month</p>
+            </div>
+
+            {/* Term in Days */}
+            <div className="space-y-2">
+              <Label>Term in Days *</Label>
+              <Input
+                type="number"
+                placeholder="e.g. 100"
+                value={createForm.termDays}
+                onChange={(e) => setCreateForm({ ...createForm, termDays: e.target.value })}
+              />
+            </div>
+
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setShowCreateDialog(false); resetCreateForm(); }}>
+              Cancel
+            </Button>
+            <Button onClick={handleCreateLoan} disabled={isCreating}>
+              {isCreating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Create Loan
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -16,7 +16,7 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api/v1';
 
 // Enums
 export type UserRole = 'ADMIN' | 'MANAGER' | 'AGENT';
-export type LoanStatus = 'PENDING' | 'ACTIVE' | 'CLOSED' | 'DEFAULTED';
+export type LoanStatus = 'PENDING' | 'ACTIVE' | 'CLOSED' | 'DEFAULTED' | 'RESTRUCTURED';
 export type TransactionType = 'PRINCIPAL' | 'INTEREST' | 'PENALTY' | 'DAILY_PAYMENT';
 export type CollateralStatus = 'HELD' | 'RELEASED' | 'FORFEITED';
 
@@ -198,39 +198,72 @@ export interface CreateGuarantorRequest {
 export interface UpdateGuarantorRequest extends Partial<Omit<CreateGuarantorRequest, 'borrowerId'>> {}
 
 // Loan
+export interface LoanBorrower {
+  id: string;
+  fullName: string;
+  phone: string;
+}
+
+export interface LoanType {
+  id: string;
+  code: string;
+  name: string;
+}
+
 export interface Loan {
   id: string;
   loanNumber: string;
-  borrowerId: string;
-  loanTypeId: string;
-  principalAmount: number;
-  interestRate: number;
-  termMonths?: number;
-  termDays?: number;
-  dailyInstallment?: number;
-  totalExpectedInterest: number;
-  totalExpectedAmount: number;
-  startDate: string;
-  maturityDate: string;
   status: LoanStatus;
-  totalPrincipalPaid: number;
+
+  // Core terms
+  principalAmount: number;
+  interestRate: number;       // decimal 0–1, e.g. 0.05 = 5%
+  termDays?: number | null;   // null for Type A (open-ended)
+  gracePeriodDays?: number;
+
+  // Dates
+  applicationDate?: string;
+  disbursementDate?: string | null;
+  maturityDate?: string | null;
+  firstPaymentDue?: string | null;
+
+  // Balances
+  totalDisbursed?: number;
+  currentPrincipal: number;
+  totalInterestAccrued?: number;
   totalInterestPaid: number;
+  totalPenaltyAccrued?: number;
   totalPenaltyPaid: number;
-  outstandingPrincipal: number;
-  outstandingInterest: number;
+  totalPrincipalPaid: number;
+
+  // Type B (Daily) specific — null for Type A
+  totalExpectedInterest?: number | null;
+  totalExpectedRepayment?: number | null;
+  dailyInstallmentAmount?: number | null;
+
+  // Status
+  isLate?: boolean;
+  daysPastDue?: number;
+  lastPaymentDate?: string | null;
+  nextDueDate?: string | null;
+
+  // Nested relations
+  borrower?: LoanBorrower;
+  loanType?: LoanType;
+  guarantor?: unknown | null;
+
   createdAt: string;
   updatedAt: string;
 }
 
 export interface CreateLoanRequest {
   borrowerId: string;
-  loanTypeId: string;
+  loanTypeCode: string;
   principalAmount: number;
-  interestRate: number;
-  termMonths?: number;
+  interestRate?: number;    // 0–1 range, defaults to 0.05
   termDays?: number;
-  startDate?: string;
-  notes?: string;
+  guarantorId?: string;
+  gracePeriodDays?: number;
 }
 
 export interface UpdateLoanStatusRequest {
@@ -362,7 +395,8 @@ export interface BorrowersQueryParams extends PaginationParams {
 export interface LoansQueryParams extends PaginationParams {
   status?: LoanStatus;
   borrowerId?: string;
-  loanTypeId?: string;
+  loanTypeCode?: string;
+  isLate?: boolean;
 }
 
 export interface CollateralQueryParams extends PaginationParams {

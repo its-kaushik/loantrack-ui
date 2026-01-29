@@ -51,26 +51,40 @@ export default function Defaulters() {
             let borrowerName = undefined;
             let borrowerPhone = undefined;
             
-            try {
-              const borrowerRes = await api.getBorrower(loan.borrowerId);
-              if (borrowerRes.success) {
-                borrowerName = borrowerRes.data.fullName;
-                borrowerPhone = borrowerRes.data.phone;
+            // Use nested borrower if available, otherwise fetch
+            if (loan.borrower) {
+              borrowerName = loan.borrower.fullName;
+              borrowerPhone = loan.borrower.phone;
+            } else {
+              try {
+                const borrowerId = (loan as any).borrowerId;
+                if (borrowerId) {
+                  const borrowerRes = await api.getBorrower(borrowerId);
+                  if (borrowerRes.success) {
+                    borrowerName = borrowerRes.data.fullName;
+                    borrowerPhone = borrowerRes.data.phone;
+                  }
+                }
+              } catch {
+                // Ignore borrower fetch errors
               }
-            } catch {
-              // Ignore borrower fetch errors
             }
 
-            const maturityDate = new Date(loan.maturityDate);
-            const today = new Date();
-            const daysOverdue = Math.max(0, Math.floor((today.getTime() - maturityDate.getTime()) / (1000 * 60 * 60 * 24)));
+            let daysOverdue = Number(loan.daysPastDue || 0);
+            if (!daysOverdue && loan.maturityDate) {
+              const maturityDate = new Date(loan.maturityDate);
+              const today = new Date();
+              daysOverdue = Math.max(0, Math.floor((today.getTime() - maturityDate.getTime()) / (1000 * 60 * 60 * 24)));
+            }
+
+            const outstandingInterest = Number(loan.totalInterestAccrued || 0) - Number(loan.totalInterestPaid || 0);
 
             return {
               loan,
               borrowerName,
               borrowerPhone,
               daysOverdue,
-              outstandingTotal: loan.outstandingPrincipal + loan.outstandingInterest
+              outstandingTotal: Number(loan.currentPrincipal) + outstandingInterest
             };
           })
         );
@@ -263,7 +277,7 @@ export default function Defaulters() {
                           {formatCurrency(defaulter.outstandingTotal)}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          P: {formatCurrency(defaulter.loan.outstandingPrincipal)}
+                          P: {formatCurrency(Number(defaulter.loan.currentPrincipal))}
                         </p>
                       </div>
                     </TableCell>

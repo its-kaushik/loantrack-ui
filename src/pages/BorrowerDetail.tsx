@@ -389,8 +389,8 @@ export default function BorrowerDetail() {
                           <div>
                             <p className="font-medium">{loan.loanNumber}</p>
                             <p className="text-sm text-muted-foreground">
-                              {loan.termMonths ? `${loan.termMonths} months` : `${loan.termDays} days`}
-                              {" "}at {loan.interestRate}%
+                              {loan.loanType?.code === 'TYPE_A_MONTHLY' ? 'Monthly (Open-ended)' : `${loan.termDays} days`}
+                              {" "}at {(Number(loan.interestRate) * 100).toFixed(0)}%
                             </p>
                           </div>
                         </div>
@@ -399,7 +399,7 @@ export default function BorrowerDetail() {
                             <p className="font-semibold">{formatCurrency(loan.principalAmount)}</p>
                             {loan.status === "ACTIVE" && (
                               <p className="text-xs text-muted-foreground">
-                                Outstanding: {formatCurrency(loan.outstandingPrincipal)}
+                                Outstanding: {formatCurrency(Number(loan.currentPrincipal))}
                               </p>
                             )}
                           </div>

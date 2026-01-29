@@ -54,14 +54,17 @@ export default function LoanDetail() {
         setLoan(loanRes.data);
         
         // Fetch borrower details
-        const borrowerRes = await api.getBorrower(loanRes.data.borrowerId);
-        if (borrowerRes.success) {
-          setBorrower(borrowerRes.data);
-          
-          // Fetch guarantors for this borrower
-          const guarantorsRes = await api.getGuarantors({ borrowerId: loanRes.data.borrowerId });
-          if (guarantorsRes.success) {
-            setGuarantors(guarantorsRes.data);
+        const borrowerId = loanRes.data.borrower?.id;
+        if (borrowerId) {
+          const borrowerRes = await api.getBorrower(borrowerId);
+          if (borrowerRes.success) {
+            setBorrower(borrowerRes.data);
+
+            // Fetch guarantors for this borrower
+            const guarantorsRes = await api.getGuarantors({ borrowerId });
+            if (guarantorsRes.success) {
+              setGuarantors(guarantorsRes.data);
+            }
           }
         }
       }
@@ -116,8 +119,8 @@ export default function LoanDetail() {
     }
   };
 
-  const isMonthlyLoan = loan?.termMonths && loan.termMonths > 0;
-  const isDailyLoan = loan?.termDays && loan.termDays > 0;
+  const isMonthlyLoan = loan?.loanType?.code === 'TYPE_A_MONTHLY';
+  const isDailyLoan = loan?.loanType?.code === 'TYPE_B_DAILY';
 
   if (isLoading) {
     return (
@@ -166,7 +169,7 @@ export default function LoanDetail() {
               {isMonthlyLoan ? (
                 <>
                   <Calendar className="h-4 w-4" />
-                  Monthly Loan • {loan.termMonths} months
+                  Monthly Loan (Open-ended)
                 </>
               ) : (
                 <>
@@ -196,24 +199,24 @@ export default function LoanDetail() {
                 </div>
                 <div className="p-4 rounded-lg bg-muted/50">
                   <p className="text-sm text-muted-foreground">Interest Rate</p>
-                  <p className="text-xl font-bold">{loan.interestRate}%</p>
+                  <p className="text-xl font-bold">{(Number(loan.interestRate) * 100).toFixed(0)}% / month</p>
                 </div>
                 <div className="p-4 rounded-lg bg-muted/50">
                   <p className="text-sm text-muted-foreground">Total Expected</p>
-                  <p className="text-xl font-bold">{formatCurrency(loan.totalExpectedAmount)}</p>
+                  <p className="text-xl font-bold">{formatCurrency(Number(loan.totalExpectedRepayment || 0))}</p>
                 </div>
                 <div className="p-4 rounded-lg bg-primary/10">
                   <p className="text-sm text-muted-foreground">Outstanding Principal</p>
-                  <p className="text-xl font-bold text-primary">{formatCurrency(loan.outstandingPrincipal)}</p>
+                  <p className="text-xl font-bold text-primary">{formatCurrency(Number(loan.currentPrincipal))}</p>
                 </div>
                 <div className="p-4 rounded-lg bg-warning/10">
                   <p className="text-sm text-muted-foreground">Outstanding Interest</p>
-                  <p className="text-xl font-bold text-warning">{formatCurrency(loan.outstandingInterest)}</p>
+                  <p className="text-xl font-bold text-warning">{formatCurrency(Number(loan.totalInterestAccrued || 0) - Number(loan.totalInterestPaid || 0))}</p>
                 </div>
                 <div className="p-4 rounded-lg bg-success/10">
                   <p className="text-sm text-muted-foreground">Total Paid</p>
                   <p className="text-xl font-bold text-success">
-                    {formatCurrency(loan.totalPrincipalPaid + loan.totalInterestPaid)}
+                    {formatCurrency(Number(loan.totalPrincipalPaid) + Number(loan.totalInterestPaid))}
                   </p>
                 </div>
               </div>
@@ -225,11 +228,15 @@ export default function LoanDetail() {
                 <div className="flex justify-between text-sm">
                   <span>Repayment Progress</span>
                   <span className="font-medium">
-                    {Math.round(((loan.totalPrincipalPaid + loan.totalInterestPaid) / loan.totalExpectedAmount) * 100)}%
+                    {Number(loan.totalExpectedRepayment) > 0
+                      ? Math.round(((Number(loan.totalPrincipalPaid) + Number(loan.totalInterestPaid)) / Number(loan.totalExpectedRepayment)) * 100)
+                      : 0}%
                   </span>
                 </div>
-                <Progress 
-                  value={((loan.totalPrincipalPaid + loan.totalInterestPaid) / loan.totalExpectedAmount) * 100} 
+                <Progress
+                  value={Number(loan.totalExpectedRepayment) > 0
+                    ? ((Number(loan.totalPrincipalPaid) + Number(loan.totalInterestPaid)) / Number(loan.totalExpectedRepayment)) * 100
+                    : 0}
                   className="h-2"
                 />
               </div>
@@ -246,8 +253,8 @@ export default function LoanDetail() {
               <CardContent>
                 <div className="grid grid-cols-10 gap-1.5">
                   {Array.from({ length: loan.termDays || 100 }).map((_, idx) => {
-                    const dailyAmount = loan.dailyInstallment || (loan.totalExpectedAmount / (loan.termDays || 100));
-                    const totalPaid = loan.totalPrincipalPaid + loan.totalInterestPaid;
+                    const dailyAmount = Number(loan.dailyInstallmentAmount) || (Number(loan.totalExpectedRepayment || 0) / (loan.termDays || 100));
+                    const totalPaid = Number(loan.totalPrincipalPaid) + Number(loan.totalInterestPaid);
                     const filledBoxes = Math.floor(totalPaid / dailyAmount);
                     const isFilled = idx < filledBoxes;
                     
