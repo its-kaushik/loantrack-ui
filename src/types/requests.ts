@@ -92,6 +92,46 @@ export interface CreateFundEntryRequest {
   entryDate: string;
 }
 
+export interface PreExistingPenalty {
+  daysOverdue: number;
+  monthsCharged: number;
+  penaltyAmount: number;
+  status: 'PENDING' | 'PAID';
+}
+
+export interface MigrateMonthlyLoanRequest {
+  loanType: 'MONTHLY';
+  borrowerId: string;
+  principalAmount: number;
+  interestRate: number;
+  disbursementDate: string;
+  expectedMonths?: number;
+  remainingPrincipal: number;
+  lastInterestPaidThrough: string;
+  guarantorId?: string;
+  collateralDescription?: string;
+  collateralEstimatedValue?: number;
+  notes?: string;
+}
+
+export interface MigrateDailyLoanRequest {
+  loanType: 'DAILY';
+  borrowerId: string;
+  principalAmount: number;
+  interestRate: number;
+  disbursementDate: string;
+  termDays: number;
+  graceDays?: number;
+  totalBaseCollectedSoFar: number;
+  preExistingPenalties?: PreExistingPenalty[];
+  guarantorId?: string;
+  collateralDescription?: string;
+  collateralEstimatedValue?: number;
+  notes?: string;
+}
+
+export type MigrateLoanRequest = MigrateMonthlyLoanRequest | MigrateDailyLoanRequest;
+
 export interface CreateUserRequest {
   name: string;
   phone: string;

@@ -1,7 +1,7 @@
 import apiClient from './client';
 import type { PaginatedResponse } from '@/types/api';
 import type { Loan, MonthlyLoanDetail, DailyLoanDetail, Transaction } from '@/types/entities';
-import type { CreateLoanRequest } from '@/types/requests';
+import type { CreateLoanRequest, MigrateLoanRequest } from '@/types/requests';
 import type { ListLoansParams, MonthlyPaymentStatus, DailyPaymentStatus } from '@/features/loans/types';
 
 export async function listLoans(
@@ -60,6 +60,16 @@ export async function defaultLoan(id: string): Promise<MonthlyLoanDetail | Daily
 export async function writeOffLoan(id: string): Promise<MonthlyLoanDetail | DailyLoanDetail> {
   const response = await apiClient.patch<MonthlyLoanDetail | DailyLoanDetail>(
     `/loans/${id}/write-off`,
+  );
+  return response.data;
+}
+
+export async function migrateLoan(
+  body: MigrateLoanRequest,
+): Promise<MonthlyLoanDetail | DailyLoanDetail> {
+  const response = await apiClient.post<MonthlyLoanDetail | DailyLoanDetail>(
+    '/loans/migrate',
+    body,
   );
   return response.data;
 }
