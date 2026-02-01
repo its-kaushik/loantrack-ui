@@ -71,7 +71,7 @@ export function CreateLoanForm() {
       loanType: 'MONTHLY',
       borrowerId: '',
       principalAmount: undefined,
-      interestRate: undefined,
+      interestRate: 5,
       disbursementDate: todayString(),
       termDays: 120,
       graceDays: 0,
