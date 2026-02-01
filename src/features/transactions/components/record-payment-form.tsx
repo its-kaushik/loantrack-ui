@@ -68,8 +68,8 @@ export function RecordPaymentForm() {
     control,
     watch,
     setValue,
+    reset,
     register,
-    clearErrors,
     formState: { errors },
   } = useForm<CreateTransactionFormValues>({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -92,7 +92,7 @@ export function RecordPaymentForm() {
   // Fetch loan detail for reference amounts
   const { data: loanDetail } = useLoanDetail(loanId || '');
 
-  // Pre-fill selected loan info from detail (URL pre-fill case)
+  // Pre-fill all defaults when loanDetail loads for URL pre-filled loan
   useEffect(() => {
     if (loanDetail && !selectedLoan) {
       setSelectedLoan({
@@ -102,14 +102,23 @@ export function RecordPaymentForm() {
         loanType: loanDetail.loanType,
       });
       const defaultType = loanDetail.loanType === 'DAILY' ? 'DAILY_COLLECTION' : 'INTEREST_PAYMENT';
-      setValue('transactionType', defaultType, { shouldValidate: false });
-      clearErrors('transactionType');
+      const defaultAmount = loanDetail.loanType === 'DAILY'
+        ? (loanDetail as DailyLoanDetail).dailyPaymentAmount
+        : (loanDetail as MonthlyLoanDetail).monthlyInterestDue;
+      lastAmountPrefilledForRef.current = loanDetail.id;
+      reset({
+        loanId: loanDetail.id,
+        transactionType: defaultType,
+        amount: defaultAmount || undefined,
+        transactionDate: todayString(),
+        notes: '',
+      });
     }
-  }, [loanDetail, selectedLoan, setValue, clearErrors]);
+  }, [loanDetail, selectedLoan, reset]);
 
-  // Pre-fill default amount when loan detail loads
+  // Pre-fill amount when loanDetail loads for picker-selected loan
   useEffect(() => {
-    if (loanDetail && loanDetail.id !== lastAmountPrefilledForRef.current) {
+    if (loanDetail && selectedLoan && loanDetail.id !== lastAmountPrefilledForRef.current) {
       lastAmountPrefilledForRef.current = loanDetail.id;
       const defaultAmount = loanDetail.loanType === 'DAILY'
         ? (loanDetail as DailyLoanDetail).dailyPaymentAmount
@@ -118,7 +127,7 @@ export function RecordPaymentForm() {
         setValue('amount', defaultAmount, { shouldValidate: false });
       }
     }
-  }, [loanDetail, setValue]);
+  }, [loanDetail, selectedLoan, setValue]);
 
   const loanType = selectedLoan?.loanType ?? loanDetail?.loanType;
   const availableTypes = loanType === 'DAILY' ? dailyTransactionTypes : monthlyTransactionTypes;
