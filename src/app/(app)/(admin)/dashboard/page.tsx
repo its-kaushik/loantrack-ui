@@ -1,12 +1,7 @@
-import { PageHeader } from '@/components/shared/page-header';
+'use client';
+
+import { TodaySummary } from '@/features/dashboard/components/today-summary';
 
 export default function DashboardPage() {
-  return (
-    <div>
-      <PageHeader title="Dashboard" />
-      <div className="p-4">
-        <p className="text-muted-foreground">Dashboard coming in Phase 2.</p>
-      </div>
-    </div>
-  );
+  return <TodaySummary />;
 }
