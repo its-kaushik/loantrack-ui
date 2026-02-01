@@ -13,6 +13,7 @@ export interface MissedCollectionItem {
 export interface MonthlyInterestDueItem {
   loanId: string;
   borrowerName: string;
+  borrowerPhone: string | null;
   interestAmount: string;
   dueDate: string;
 }

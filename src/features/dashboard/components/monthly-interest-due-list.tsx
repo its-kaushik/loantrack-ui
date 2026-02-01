@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { CurrencyDisplay } from '@/components/shared/currency-display';
+import { Phone } from 'lucide-react';
 import { EmptyState } from '@/components/shared/empty-state';
 import type { MonthlyInterestDueItem } from '../types';
 
@@ -25,19 +26,27 @@ export function MonthlyInterestDueList({ items }: MonthlyInterestDueListProps) {
         ) : (
           <div className="space-y-1">
             {items.map((item) => (
-              <Link
+              <div
                 key={item.loanId}
-                href={`/loans/${item.loanId}`}
                 className="flex items-center justify-between rounded-md p-2 hover:bg-muted/50"
               >
-                <div className="min-w-0 flex-1">
+                <Link href={`/loans/${item.loanId}`} className="flex-1 min-w-0">
                   <p className="text-sm font-medium truncate">{item.borrowerName}</p>
-                  <p className="text-xs text-muted-foreground">Due: {item.dueDate}</p>
-                </div>
-                <p className="text-sm font-semibold">
-                  <CurrencyDisplay amount={item.interestAmount} />
-                </p>
-              </Link>
+                  <p className="text-xs text-muted-foreground">
+                    <CurrencyDisplay amount={item.interestAmount} /> &middot; Due: {item.dueDate}
+                  </p>
+                </Link>
+                {item.borrowerPhone && (
+                  <a
+                    href={`tel:${item.borrowerPhone}`}
+                    onClick={(e) => e.stopPropagation()}
+                    className="ml-2 p-2 rounded-full text-primary hover:bg-primary/10"
+                    aria-label={`Call ${item.borrowerName}`}
+                  >
+                    <Phone className="h-4 w-4" />
+                  </a>
+                )}
+              </div>
             ))}
           </div>
         )}
