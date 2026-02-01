@@ -20,6 +20,7 @@ import type { DailyLoanDetail as DailyLoanDetailType } from '@/types/entities';
 
 interface DailyLoanDetailProps {
   loan: DailyLoanDetailType;
+  readOnly?: boolean;
 }
 
 function MetricRow({ label, value, tooltip }: { label: string; value: React.ReactNode; tooltip?: string }) {
@@ -45,7 +46,7 @@ function MetricRow({ label, value, tooltip }: { label: string; value: React.Reac
   );
 }
 
-export function DailyLoanDetail({ loan }: DailyLoanDetailProps) {
+export function DailyLoanDetail({ loan, readOnly }: DailyLoanDetailProps) {
   const closeMutation = useCloseLoan(loan.id);
   const defaultMutation = useDefaultLoan(loan.id);
   const writeOffMutation = useWriteOffLoan(loan.id);
@@ -139,7 +140,7 @@ export function DailyLoanDetail({ loan }: DailyLoanDetailProps) {
       </Card>
 
       {/* Quick Actions */}
-      {(isActive || isDefaulted) && (
+      {!readOnly && (isActive || isDefaulted) && (
         <Card>
           <CardContent className="py-3 flex flex-wrap gap-2">
             {isActive && (

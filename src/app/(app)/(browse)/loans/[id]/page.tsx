@@ -4,6 +4,7 @@ import { use } from 'react';
 import { PageHeader } from '@/components/shared/page-header';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useLoanDetail } from '@/features/loans/hooks/use-loan-detail';
+import { useAuthStore } from '@/stores/auth-store';
 import { MonthlyLoanDetail } from '@/features/loans/components/monthly-loan-detail';
 import { DailyLoanDetail } from '@/features/loans/components/daily-loan-detail';
 import type { MonthlyLoanDetail as MonthlyLoanDetailType, DailyLoanDetail as DailyLoanDetailType } from '@/types/entities';
@@ -11,6 +12,7 @@ import type { MonthlyLoanDetail as MonthlyLoanDetailType, DailyLoanDetail as Dai
 export default function LoanDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const { data: loan, isLoading, isError } = useLoanDetail(id);
+  const isCollector = useAuthStore((s) => s.user?.role === 'COLLECTOR');
 
   if (isLoading) {
     return (
@@ -41,9 +43,9 @@ export default function LoanDetailPage({ params }: { params: Promise<{ id: strin
     <div>
       <PageHeader title="Loan Detail" backHref="/loans" />
       {loan.loanType === 'MONTHLY' ? (
-        <MonthlyLoanDetail loan={loan as MonthlyLoanDetailType} />
+        <MonthlyLoanDetail loan={loan as MonthlyLoanDetailType} readOnly={isCollector} />
       ) : (
-        <DailyLoanDetail loan={loan as DailyLoanDetailType} />
+        <DailyLoanDetail loan={loan as DailyLoanDetailType} readOnly={isCollector} />
       )}
     </div>
   );

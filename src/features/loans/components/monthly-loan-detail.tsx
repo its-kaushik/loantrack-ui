@@ -19,6 +19,7 @@ import type { MonthlyLoanDetail as MonthlyLoanDetailType } from '@/types/entitie
 
 interface MonthlyLoanDetailProps {
   loan: MonthlyLoanDetailType;
+  readOnly?: boolean;
 }
 
 function MetricRow({ label, value, tooltip }: { label: string; value: React.ReactNode; tooltip?: string }) {
@@ -44,7 +45,7 @@ function MetricRow({ label, value, tooltip }: { label: string; value: React.Reac
   );
 }
 
-export function MonthlyLoanDetail({ loan }: MonthlyLoanDetailProps) {
+export function MonthlyLoanDetail({ loan, readOnly }: MonthlyLoanDetailProps) {
   const closeMutation = useCloseLoan(loan.id);
   const defaultMutation = useDefaultLoan(loan.id);
   const writeOffMutation = useWriteOffLoan(loan.id);
@@ -100,7 +101,7 @@ export function MonthlyLoanDetail({ loan }: MonthlyLoanDetailProps) {
       </Card>
 
       {/* Quick Actions */}
-      {(isActive || isDefaulted) && (
+      {!readOnly && (isActive || isDefaulted) && (
         <Card>
           <CardContent className="py-3 flex flex-wrap gap-2">
             {isActive && (

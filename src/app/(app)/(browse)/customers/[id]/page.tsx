@@ -4,11 +4,13 @@ import { use } from 'react';
 import { PageHeader } from '@/components/shared/page-header';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useCustomerDetail } from '@/features/customers/hooks/use-customer-detail';
+import { useAuthStore } from '@/stores/auth-store';
 import { CustomerDetailView } from '@/features/customers/components/customer-detail';
 
 export default function CustomerDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const { data: customer, isLoading, isError } = useCustomerDetail(id);
+  const isCollector = useAuthStore((s) => s.user?.role === 'COLLECTOR');
 
   if (isLoading) {
     return (
@@ -37,7 +39,7 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
   return (
     <div>
       <PageHeader title="Customer" backHref="/customers" />
-      <CustomerDetailView customer={customer} />
+      <CustomerDetailView customer={customer} readOnly={isCollector} />
     </div>
   );
 }

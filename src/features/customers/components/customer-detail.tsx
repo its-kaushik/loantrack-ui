@@ -11,6 +11,7 @@ import type { CustomerDetail as CustomerDetailType } from '@/types/entities';
 
 interface CustomerDetailProps {
   customer: CustomerDetailType;
+  readOnly?: boolean;
 }
 
 function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
@@ -23,7 +24,7 @@ function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
   );
 }
 
-export function CustomerDetailView({ customer }: CustomerDetailProps) {
+export function CustomerDetailView({ customer, readOnly }: CustomerDetailProps) {
   return (
     <div className="space-y-4 p-4">
       {/* Header */}
@@ -45,12 +46,14 @@ export function CustomerDetailView({ customer }: CustomerDetailProps) {
             {customer.phone}
           </a>
         </div>
-        <Button variant="outline" size="sm" asChild>
-          <Link href={`/customers/${customer.id}/edit`}>
-            <Pencil className="mr-1 h-4 w-4" />
-            Edit
-          </Link>
-        </Button>
+        {!readOnly && (
+          <Button variant="outline" size="sm" asChild>
+            <Link href={`/customers/${customer.id}/edit`}>
+              <Pencil className="mr-1 h-4 w-4" />
+              Edit
+            </Link>
+          </Button>
+        )}
       </div>
 
       {/* Guarantor Warnings */}
