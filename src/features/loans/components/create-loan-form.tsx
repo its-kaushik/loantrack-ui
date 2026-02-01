@@ -14,7 +14,7 @@ import { DatePicker } from '@/components/shared/date-picker';
 import { CustomerPicker } from '@/components/shared/customer-picker';
 import { useCreateLoan } from '../hooks/use-create-loan';
 import { createMonthlyLoanSchema, createDailyLoanSchema } from '../schemas';
-import { ChevronDown, ChevronUp } from 'lucide-react';
+import { ChevronDown, ChevronUp, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { ApiError } from '@/types/api';
 import type { LoanType } from '@/types/enums';
@@ -359,20 +359,39 @@ export function CreateLoanForm() {
         {/* Guarantor */}
         <div className="space-y-2">
           <Label>Guarantor (optional)</Label>
-          <Controller
-            name="guarantorId"
-            control={control}
-            render={({ field }) => (
-              <CustomerPicker
-                value={field.value}
-                selectedCustomer={selectedGuarantor}
-                onChange={(id, customer: Customer) => {
-                  field.onChange(id);
-                  setSelectedGuarantor({ id, name: customer.fullName });
-                }}
+          <div className="flex gap-2">
+            <div className="flex-1">
+              <Controller
+                name="guarantorId"
+                control={control}
+                render={({ field }) => (
+                  <CustomerPicker
+                    value={field.value}
+                    selectedCustomer={selectedGuarantor}
+                    onChange={(id, customer: Customer) => {
+                      field.onChange(id);
+                      setSelectedGuarantor({ id, name: customer.fullName });
+                    }}
+                  />
+                )}
               />
+            </div>
+            {selectedGuarantor && (
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                className="shrink-0"
+                onClick={() => {
+                  setValue('guarantorId', undefined);
+                  setSelectedGuarantor(null);
+                }}
+                aria-label="Remove guarantor"
+              >
+                <X className="h-4 w-4" />
+              </Button>
             )}
-          />
+          </div>
         </div>
 
         {/* Collateral Description */}
