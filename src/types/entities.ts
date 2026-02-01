@@ -151,6 +151,34 @@ export interface Penalty {
   createdAt: string;
 }
 
+export interface PenaltyCalculation {
+  daysOverdue: number;
+  totalMonthsOwed: number;
+  monthsAlreadyPenalised: number;
+  incrementalMonths: number;
+  principalAmount: number;
+  interestRate: number;
+  calculatedAmount: number;
+  wasOverridden: boolean;
+}
+
+export interface PenaltyCalculationResponse {
+  penalty: Penalty;
+  calculation: PenaltyCalculation;
+}
+
+export interface Waiver {
+  id: string;
+  loanId: string;
+  transactionType: string;
+  amount: number;
+  transactionDate: string;
+  effectiveDate: string | null;
+  penaltyId: string | null;
+  notes: string | null;
+  createdAt: string;
+}
+
 export interface Expense {
   id: string;
   category: ExpenseCategory;

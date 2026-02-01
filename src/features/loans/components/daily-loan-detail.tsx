@@ -12,6 +12,7 @@ import { CurrencyDisplay } from '@/components/shared/currency-display';
 import { ConfirmationDialog } from '@/components/shared/confirmation-dialog';
 import { CollectionCalendar } from './collection-calendar';
 import { LoanTransactionList } from './loan-transaction-list';
+import { PenaltyList } from '@/features/penalties/components/penalty-list';
 import { useCloseLoan, useDefaultLoan, useWriteOffLoan, useCancelLoan } from '../hooks/use-loan-actions';
 import { formatDate } from '@/utils/date';
 import { Info, Receipt, XCircle, AlertTriangle, Ban, AlertOctagon } from 'lucide-react';
@@ -205,6 +206,16 @@ export function DailyLoanDetail({ loan }: DailyLoanDetailProps) {
             </div>
           </div>
           <CollectionCalendar loanId={loan.id} />
+        </CardContent>
+      </Card>
+
+      {/* Penalties */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm font-medium text-muted-foreground">Penalties</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <PenaltyList loanId={loan.id} />
         </CardContent>
       </Card>
 

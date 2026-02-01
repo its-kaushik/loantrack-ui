@@ -9,11 +9,12 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { StatusBadge } from '@/components/shared/status-badge';
 import { CurrencyDisplay } from '@/components/shared/currency-display';
 import { ConfirmationDialog } from '@/components/shared/confirmation-dialog';
+import { WaiveInterestSheet } from '@/features/penalties/components/waive-interest-sheet';
 import { PaymentStatusTable } from './payment-status-table';
 import { LoanTransactionList } from './loan-transaction-list';
 import { useCloseLoan, useDefaultLoan, useWriteOffLoan, useCancelLoan } from '../hooks/use-loan-actions';
 import { formatDate } from '@/utils/date';
-import { Info, Receipt, XCircle, AlertTriangle, Ban } from 'lucide-react';
+import { Info, Receipt, XCircle, AlertTriangle, Ban, PercentCircle } from 'lucide-react';
 import type { MonthlyLoanDetail as MonthlyLoanDetailType } from '@/types/entities';
 
 interface MonthlyLoanDetailProps {
@@ -53,6 +54,7 @@ export function MonthlyLoanDetail({ loan }: MonthlyLoanDetailProps) {
   const [defaultOpen, setDefaultOpen] = useState(false);
   const [writeOffOpen, setWriteOffOpen] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
+  const [waiveInterestOpen, setWaiveInterestOpen] = useState(false);
 
   const isActive = loan.status === 'ACTIVE';
   const isDefaulted = loan.status === 'DEFAULTED';
@@ -107,6 +109,12 @@ export function MonthlyLoanDetail({ loan }: MonthlyLoanDetailProps) {
                   <Receipt className="mr-1 h-4 w-4" />
                   Record Payment
                 </Link>
+              </Button>
+            )}
+            {isActive && (
+              <Button size="sm" variant="outline" onClick={() => setWaiveInterestOpen(true)}>
+                <PercentCircle className="mr-1 h-4 w-4" />
+                Waive Interest
               </Button>
             )}
             {isActive && (
@@ -209,6 +217,13 @@ export function MonthlyLoanDetail({ loan }: MonthlyLoanDetailProps) {
         onConfirm={() => cancelMutation.mutate('')}
         destructive
         loading={cancelMutation.isPending}
+      />
+
+      <WaiveInterestSheet
+        open={waiveInterestOpen}
+        onOpenChange={setWaiveInterestOpen}
+        loanId={loan.id}
+        monthlyInterestDue={loan.monthlyInterestDue}
       />
     </div>
   );
