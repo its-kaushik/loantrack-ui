@@ -3,7 +3,6 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/stores/auth-store';
-import { Button } from '@/components/ui/button';
 
 function getRoleHomePath(role: string): string {
   switch (role) {
@@ -16,7 +15,7 @@ function getRoleHomePath(role: string): string {
   }
 }
 
-export default function Home() {
+export default function AuthLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const { user, refreshToken, isHydrated } = useAuthStore();
 
@@ -28,18 +27,13 @@ export default function Home() {
     }
   }, [isHydrated, user, refreshToken, router]);
 
+  // While hydrating or if authenticated (about to redirect), show nothing
   if (!isHydrated) return null;
   if (user && refreshToken) return null;
 
   return (
-    <div className="flex min-h-screen items-center justify-center">
-      <div className="text-center space-y-4">
-        <h1 className="text-3xl font-bold text-primary">LoanTrack</h1>
-        <p className="text-muted-foreground">Multi-tenant loan management platform</p>
-        <Button asChild>
-          <a href="/login">Get Started</a>
-        </Button>
-      </div>
+    <div className="flex min-h-screen items-center justify-center bg-muted/30 px-4">
+      <div className="w-full max-w-sm">{children}</div>
     </div>
   );
 }
