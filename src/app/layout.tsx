@@ -17,6 +17,12 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: 'LoanTrack',
   description: 'Multi-tenant loan management platform',
+  manifest: '/manifest.json',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'LoanTrack',
+  },
 };
 
 export const viewport: Viewport = {

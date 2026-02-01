@@ -5,6 +5,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import { useAuthStore } from '@/stores/auth-store';
 import { refreshToken } from '@/lib/api/auth.api';
 import { OfflineBanner } from '@/components/shared/offline-banner';
+import { InstallBanner } from '@/components/shared/install-banner';
 import { Button } from '@/components/ui/button';
 import { LogOut } from 'lucide-react';
 
@@ -164,6 +165,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     <>
       <OfflineBanner />
       {children}
+      <InstallBanner />
     </>
   );
 }
