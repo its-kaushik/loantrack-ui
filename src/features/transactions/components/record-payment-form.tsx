@@ -83,7 +83,7 @@ export function RecordPaymentForm() {
       penaltyId: undefined,
       notes: '',
     },
-    mode: 'onChange',
+    mode: 'onTouched',
   });
 
   const loanId = watch('loanId');
