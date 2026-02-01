@@ -53,6 +53,7 @@ export function RecordPaymentForm() {
   const prefilledLoanId = searchParams.get('loanId') ?? undefined;
 
   const idempotencyKeyRef = useRef(generateIdempotencyKey());
+  const lastAmountPrefilledForRef = useRef<string>('');
   const createMutation = useCreateTransaction();
 
   const [selectedLoan, setSelectedLoan] = useState<{
@@ -90,7 +91,7 @@ export function RecordPaymentForm() {
   // Fetch loan detail for reference amounts
   const { data: loanDetail } = useLoanDetail(loanId || '');
 
-  // Pre-fill selected loan info from detail
+  // Pre-fill selected loan info from detail (URL pre-fill case)
   useEffect(() => {
     if (loanDetail && !selectedLoan) {
       setSelectedLoan({
@@ -103,6 +104,19 @@ export function RecordPaymentForm() {
       setValue('transactionType', defaultType, { shouldValidate: false });
     }
   }, [loanDetail, selectedLoan, setValue]);
+
+  // Pre-fill default amount when loan detail loads
+  useEffect(() => {
+    if (loanDetail && loanDetail.id !== lastAmountPrefilledForRef.current) {
+      lastAmountPrefilledForRef.current = loanDetail.id;
+      const defaultAmount = loanDetail.loanType === 'DAILY'
+        ? (loanDetail as DailyLoanDetail).dailyPaymentAmount
+        : (loanDetail as MonthlyLoanDetail).monthlyInterestDue;
+      if (defaultAmount) {
+        setValue('amount', defaultAmount, { shouldValidate: false });
+      }
+    }
+  }, [loanDetail, setValue]);
 
   const loanType = selectedLoan?.loanType ?? loanDetail?.loanType;
   const availableTypes = loanType === 'DAILY' ? dailyTransactionTypes : monthlyTransactionTypes;
