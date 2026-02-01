@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 
 interface EmptyStateProps {
@@ -7,9 +8,11 @@ interface EmptyStateProps {
     label: string;
     onClick: () => void;
   };
+  actionLabel?: string;
+  actionHref?: string;
 }
 
-export function EmptyState({ title, description, action }: EmptyStateProps) {
+export function EmptyState({ title, description, action, actionLabel, actionHref }: EmptyStateProps) {
   return (
     <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
       <div className="h-16 w-16 rounded-full bg-muted flex items-center justify-center mb-4">
@@ -22,6 +25,11 @@ export function EmptyState({ title, description, action }: EmptyStateProps) {
       {action && (
         <Button onClick={action.onClick} className="mt-4" size="sm">
           {action.label}
+        </Button>
+      )}
+      {actionLabel && actionHref && (
+        <Button asChild className="mt-4" size="sm">
+          <Link href={actionHref}>{actionLabel}</Link>
         </Button>
       )}
     </div>
