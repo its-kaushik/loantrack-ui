@@ -95,8 +95,9 @@ export function RecordPaymentForm() {
     }
   }, [prefilledLoanId, loanId, setValue]);
 
-  // Fetch loan detail for reference amounts
-  const { data: loanDetail } = useLoanDetail(loanId || '');
+  // Fetch loan detail for reference amounts — use prefilledLoanId as fallback
+  // so the query fires immediately even before the form's loanId syncs
+  const { data: loanDetail } = useLoanDetail(loanId || prefilledLoanId || '');
 
   // Pre-fill defaults when loanDetail loads (both URL pre-fill and picker cases)
   useEffect(() => {
