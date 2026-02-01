@@ -1,7 +1,10 @@
 import { format, parseISO } from 'date-fns';
 
 export function formatDate(dateStr: string): string {
-  return format(parseISO(dateStr), 'dd MMM yyyy');
+  // Try ISO format first, fall back to native Date parsing for non-ISO strings
+  const date = dateStr.includes('-') ? parseISO(dateStr) : new Date(dateStr);
+  if (isNaN(date.getTime())) return dateStr;
+  return format(date, 'dd MMM yyyy');
 }
 
 export function formatTimestamp(isoStr: string): string {
