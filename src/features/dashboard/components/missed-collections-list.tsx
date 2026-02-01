@@ -45,13 +45,15 @@ export function MissedCollectionsList({ items }: MissedCollectionsListProps) {
                     <CurrencyDisplay amount={item.dailyPaymentAmount} />
                   </p>
                 </Link>
-                <a
-                  href={`tel:${item.borrowerName}`}
-                  className="ml-2 p-2 rounded-full text-primary hover:bg-primary/10"
-                  aria-label={`Call ${item.borrowerName}`}
-                >
-                  <Phone className="h-4 w-4" />
-                </a>
+                {item.borrowerPhone && (
+                  <a
+                    href={`tel:${item.borrowerPhone}`}
+                    className="ml-2 p-2 rounded-full text-primary hover:bg-primary/10"
+                    aria-label={`Call ${item.borrowerName}`}
+                  >
+                    <Phone className="h-4 w-4" />
+                  </a>
+                )}
               </div>
             ))}
             {items.length > INITIAL_VISIBLE && !showAll && (

@@ -6,6 +6,7 @@ export interface CollectionStats {
 export interface MissedCollectionItem {
   loanId: string;
   borrowerName: string;
+  borrowerPhone: string | null;
   dailyPaymentAmount: string;
 }
 
