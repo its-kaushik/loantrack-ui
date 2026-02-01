@@ -88,6 +88,13 @@ export function RecordPaymentForm() {
   const loanId = watch('loanId');
   const transactionType = watch('transactionType');
 
+  // Sync prefilledLoanId into form (useSearchParams may resolve after mount during client-side navigation)
+  useEffect(() => {
+    if (prefilledLoanId && prefilledLoanId !== loanId) {
+      setValue('loanId', prefilledLoanId);
+    }
+  }, [prefilledLoanId, loanId, setValue]);
+
   // Fetch loan detail for reference amounts
   const { data: loanDetail } = useLoanDetail(loanId || '');
 
