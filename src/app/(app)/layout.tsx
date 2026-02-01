@@ -21,7 +21,7 @@ function getRoleHomePath(role: string): string {
 }
 
 function isRouteAllowedForRole(pathname: string, role: string): boolean {
-  const adminPaths = ['/dashboard', '/loans', '/customers', '/money', '/more'];
+  const adminPaths = ['/dashboard', '/loans', '/customers', '/money', '/more', '/today'];
   const collectorPaths = ['/today', '/loans', '/customers', '/profile'];
   const platformPaths = ['/platform'];
   const sharedPaths = ['/shared'];
