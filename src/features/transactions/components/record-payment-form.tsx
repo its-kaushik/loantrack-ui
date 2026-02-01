@@ -99,8 +99,10 @@ export function RecordPaymentForm() {
         borrowerName: loanDetail.borrowerName,
         loanType: loanDetail.loanType,
       });
+      const defaultType = loanDetail.loanType === 'DAILY' ? 'DAILY_COLLECTION' : 'INTEREST_PAYMENT';
+      setValue('transactionType', defaultType, { shouldValidate: false });
     }
-  }, [loanDetail, selectedLoan]);
+  }, [loanDetail, selectedLoan, setValue]);
 
   const loanType = selectedLoan?.loanType ?? loanDetail?.loanType;
   const availableTypes = loanType === 'DAILY' ? dailyTransactionTypes : monthlyTransactionTypes;
@@ -130,8 +132,9 @@ export function RecordPaymentForm() {
       borrowerName: loan.borrowerName,
       loanType: loan.loanType,
     });
-    // Reset transaction type when loan changes
-    setValue('transactionType', '' as CreateTransactionFormValues['transactionType'], { shouldValidate: false });
+    // Set default transaction type based on loan type
+    const defaultType = loan.loanType === 'DAILY' ? 'DAILY_COLLECTION' : 'INTEREST_PAYMENT';
+    setValue('transactionType', defaultType, { shouldValidate: false });
   };
 
   const onSubmit = (data: CreateTransactionFormValues) => {
