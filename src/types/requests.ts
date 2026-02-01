@@ -12,6 +12,18 @@ export interface CreateCustomerRequest {
   notes?: string;
 }
 
+export interface UpdateCustomerRequest {
+  fullName?: string | null;
+  phone?: string | null;
+  alternatePhone?: string | null;
+  address?: string | null;
+  aadhaarNumber?: string | null;
+  panNumber?: string | null;
+  idProofType?: string | null;
+  occupation?: string | null;
+  notes?: string | null;
+}
+
 export interface CreateMonthlyLoanRequest {
   loanType: 'MONTHLY';
   borrowerId: string;

@@ -25,6 +25,28 @@ export interface Customer {
   createdAt: string;
 }
 
+export interface GuarantorWarning {
+  loanId: string;
+  loanNumber: string;
+  borrowerName: string;
+  status: string;
+}
+
+export interface CustomerDetail extends Customer {
+  guarantorWarnings: GuarantorWarning[];
+}
+
+export interface CustomerLoan {
+  id: string;
+  loanNumber: string;
+  loanType: LoanType;
+  principalAmount: number;
+  interestRate: number;
+  status: LoanStatus;
+  disbursementDate: string;
+  createdAt: string;
+}
+
 export interface Loan {
   id: string;
   loanNumber: string;
