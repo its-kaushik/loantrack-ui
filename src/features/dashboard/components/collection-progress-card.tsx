@@ -11,7 +11,7 @@ interface CollectionProgressCardProps {
 export function CollectionProgressCard({ expected, received }: CollectionProgressCardProps) {
   const expectedAmount = parseFloat(expected.totalAmount);
   const receivedAmount = parseFloat(received.totalAmount);
-  const percentage = expectedAmount > 0 ? Math.round((receivedAmount / expectedAmount) * 100) : 0;
+  const percentage = expected.count > 0 ? Math.round((received.count / expected.count) * 100) : 0;
 
   return (
     <Card>
