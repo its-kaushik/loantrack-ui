@@ -227,6 +227,10 @@ export interface Tenant {
   slug: string;
   ownerName: string;
   ownerPhone: string;
+  ownerEmail: string | null;
+  address: string | null;
   status: TenantStatus;
+  subscriptionPlan: string | null;
   createdAt: string;
+  updatedAt: string;
 }
