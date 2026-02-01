@@ -53,7 +53,7 @@ export function RecordPaymentForm() {
   const prefilledLoanId = searchParams.get('loanId') ?? undefined;
 
   const idempotencyKeyRef = useRef(generateIdempotencyKey());
-  const lastAmountPrefilledForRef = useRef<string>('');
+  const lastPrefilledLoanRef = useRef<string>('');
   const createMutation = useCreateTransaction();
 
   const [selectedLoan, setSelectedLoan] = useState<{
@@ -68,7 +68,6 @@ export function RecordPaymentForm() {
     control,
     watch,
     setValue,
-    reset,
     register,
     formState: { errors },
   } = useForm<CreateTransactionFormValues>({
@@ -92,40 +91,28 @@ export function RecordPaymentForm() {
   // Fetch loan detail for reference amounts
   const { data: loanDetail } = useLoanDetail(loanId || '');
 
-  // Pre-fill all defaults when loanDetail loads for URL pre-filled loan
+  // Pre-fill defaults when loanDetail loads (both URL pre-fill and picker cases)
   useEffect(() => {
-    if (loanDetail && !selectedLoan) {
+    if (!loanDetail || loanDetail.id === lastPrefilledLoanRef.current) return;
+    lastPrefilledLoanRef.current = loanDetail.id;
+
+    if (!selectedLoan) {
       setSelectedLoan({
         id: loanDetail.id,
         loanNumber: loanDetail.loanNumber,
         borrowerName: loanDetail.borrowerName,
         loanType: loanDetail.loanType,
       });
-      const defaultType = loanDetail.loanType === 'DAILY' ? 'DAILY_COLLECTION' : 'INTEREST_PAYMENT';
-      const defaultAmount = loanDetail.loanType === 'DAILY'
-        ? (loanDetail as DailyLoanDetail).dailyPaymentAmount
-        : (loanDetail as MonthlyLoanDetail).monthlyInterestDue;
-      lastAmountPrefilledForRef.current = loanDetail.id;
-      reset({
-        loanId: loanDetail.id,
-        transactionType: defaultType,
-        amount: defaultAmount || undefined,
-        transactionDate: todayString(),
-        notes: '',
-      });
     }
-  }, [loanDetail, selectedLoan, reset]);
 
-  // Pre-fill amount when loanDetail loads for picker-selected loan
-  useEffect(() => {
-    if (loanDetail && selectedLoan && loanDetail.id !== lastAmountPrefilledForRef.current) {
-      lastAmountPrefilledForRef.current = loanDetail.id;
-      const defaultAmount = loanDetail.loanType === 'DAILY'
-        ? (loanDetail as DailyLoanDetail).dailyPaymentAmount
-        : (loanDetail as MonthlyLoanDetail).monthlyInterestDue;
-      if (defaultAmount) {
-        setValue('amount', defaultAmount, { shouldValidate: false });
-      }
+    const defaultType = loanDetail.loanType === 'DAILY' ? 'DAILY_COLLECTION' : 'INTEREST_PAYMENT';
+    setValue('transactionType', defaultType);
+
+    const defaultAmount = loanDetail.loanType === 'DAILY'
+      ? (loanDetail as DailyLoanDetail).dailyPaymentAmount
+      : (loanDetail as MonthlyLoanDetail).monthlyInterestDue;
+    if (defaultAmount) {
+      setValue('amount', defaultAmount);
     }
   }, [loanDetail, selectedLoan, setValue]);
 
