@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { formatCurrency } from '@/utils/currency';
 import { cn } from '@/lib/utils';
@@ -23,6 +23,16 @@ export function CurrencyInput({
   disabled,
 }: CurrencyInputProps) {
   const [rawInput, setRawInput] = useState(value?.toString() ?? '');
+
+  // Sync external value changes (e.g. from setValue) to internal state
+  useEffect(() => {
+    const currentNum = parseFloat(rawInput);
+    if (value === undefined && rawInput !== '') {
+      setRawInput('');
+    } else if (value !== undefined && (isNaN(currentNum) || currentNum !== value)) {
+      setRawInput(value.toString());
+    }
+  }, [value]);
 
   const handleChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {

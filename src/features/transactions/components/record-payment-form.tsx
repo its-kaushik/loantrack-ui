@@ -69,6 +69,7 @@ export function RecordPaymentForm() {
     watch,
     setValue,
     register,
+    clearErrors,
     formState: { errors },
   } = useForm<CreateTransactionFormValues>({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -102,8 +103,9 @@ export function RecordPaymentForm() {
       });
       const defaultType = loanDetail.loanType === 'DAILY' ? 'DAILY_COLLECTION' : 'INTEREST_PAYMENT';
       setValue('transactionType', defaultType, { shouldValidate: false });
+      clearErrors('transactionType');
     }
-  }, [loanDetail, selectedLoan, setValue]);
+  }, [loanDetail, selectedLoan, setValue, clearErrors]);
 
   // Pre-fill default amount when loan detail loads
   useEffect(() => {
