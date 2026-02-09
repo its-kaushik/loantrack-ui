@@ -84,3 +84,15 @@ export async function cancelLoan(
   );
   return response.data;
 }
+
+export interface MissedTodayLoan {
+  loanId: string;
+  borrowerName: string;
+  borrowerPhone: string;
+  dailyPaymentAmount: string;
+}
+
+export async function getMissedToday(): Promise<MissedTodayLoan[]> {
+  const response = await apiClient.get<{ missedToday: MissedTodayLoan[] }>('/loans/missed-today');
+  return response.data.missedToday;
+}

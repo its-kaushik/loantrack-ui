@@ -2,40 +2,30 @@
 
 import Link from 'next/link';
 import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { CurrencyDisplay } from '@/components/shared/currency-display';
-import { Phone, Check } from 'lucide-react';
-import type { CollectionTodayItem } from '../types';
+import { Phone } from 'lucide-react';
+import type { MissedTodayLoan } from '@/lib/api/loans.api';
 
 interface DailyLoanItemProps {
-  item: CollectionTodayItem;
+  item: MissedTodayLoan;
 }
 
 export function DailyLoanItem({ item }: DailyLoanItemProps) {
   return (
-    <Card className={item.submittedToday ? 'opacity-60' : ''}>
+    <Card>
       <CardContent className="py-3">
         <div className="flex items-start justify-between">
           <Link
-            href={`/today/record?loanId=${item.id}`}
+            href={`/today/record?loanId=${item.loanId}`}
             className="min-w-0 flex-1"
           >
-            <div className="flex items-center gap-2 mb-0.5">
-              <p className="text-sm font-medium truncate">{item.borrowerName}</p>
-              {item.submittedToday && (
-                <Badge variant="secondary" className="text-[10px] gap-0.5 flex-shrink-0">
-                  <Check className="h-3 w-3" />
-                  Submitted
-                </Badge>
-              )}
-            </div>
-            <p className="text-xs text-muted-foreground">{item.loanNumber}</p>
+            <p className="text-sm font-medium truncate">{item.borrowerName}</p>
           </Link>
 
           <div className="flex items-center gap-2 flex-shrink-0 ml-3">
             <div className="text-right">
               <p className="text-sm font-semibold">
-                <CurrencyDisplay amount={item.principalAmount} />
+                <CurrencyDisplay amount={parseFloat(item.dailyPaymentAmount)} />
               </p>
             </div>
             {item.borrowerPhone && (

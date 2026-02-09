@@ -24,19 +24,13 @@ export function CollectionsToday() {
 
   const allItems = items ?? [];
 
-  // Sort: unsubmitted first, then submitted
-  const sorted = [...allItems].sort((a, b) => {
-    if (a.submittedToday === b.submittedToday) return 0;
-    return a.submittedToday ? 1 : -1;
-  });
-
   return (
     <div className="space-y-3">
       <CashHandoverCard items={allItems} />
 
       {allItems.length === 0 ? (
         <p className="text-sm text-muted-foreground text-center py-8">
-          No active daily loans found.
+          All collections done for today!
         </p>
       ) : (
         <>
@@ -54,8 +48,8 @@ export function CollectionsToday() {
           </div>
 
           <div className="space-y-2">
-            {sorted.map((item) => (
-              <DailyLoanItem key={item.id} item={item} />
+            {allItems.map((item) => (
+              <DailyLoanItem key={item.loanId} item={item} />
             ))}
           </div>
         </>
