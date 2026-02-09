@@ -42,7 +42,6 @@ export function useApproveTransaction() {
       if (context?.previousData) {
         queryClient.setQueryData(queryKeys.transactions.pending(), context.previousData);
       }
-      toast.error('Failed to approve transaction');
     },
     onSuccess: () => {
       toast.success('Transaction approved');

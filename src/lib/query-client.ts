@@ -1,4 +1,13 @@
 import { QueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
+import type { ApiError } from '@/types/api';
+
+function getErrorMessage(error: unknown): string {
+  if (error && typeof error === 'object' && 'message' in error) {
+    return (error as ApiError).message;
+  }
+  return 'An unexpected error occurred';
+}
 
 export function makeQueryClient() {
   return new QueryClient({
@@ -12,6 +21,9 @@ export function makeQueryClient() {
       },
       mutations: {
         retry: 0,
+        onError: (error) => {
+          toast.error(getErrorMessage(error));
+        },
       },
     },
   });

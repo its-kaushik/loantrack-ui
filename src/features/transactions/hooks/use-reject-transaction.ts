@@ -43,7 +43,6 @@ export function useRejectTransaction() {
       if (context?.previousData) {
         queryClient.setQueryData(queryKeys.transactions.pending(), context.previousData);
       }
-      toast.error('Failed to reject transaction');
     },
     onSuccess: () => {
       toast.success('Transaction rejected');

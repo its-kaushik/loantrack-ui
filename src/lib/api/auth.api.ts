@@ -1,6 +1,20 @@
-import axios from 'axios';
+import axios, { type AxiosError } from 'axios';
 import apiClient from './client';
 import type { AuthUser } from '@/stores/auth-store';
+import type { ApiError } from '@/types/api';
+
+function extractApiError(error: AxiosError): ApiError {
+  const data = error.response?.data;
+  if (data && typeof data === 'object' && 'error' in data) {
+    return (data as { error: ApiError }).error;
+  }
+  return {
+    code: 'INTERNAL_ERROR',
+    message: error.message || 'An unexpected error occurred',
+    details: [],
+    status: error.response?.status || 500,
+  };
+}
 
 interface LoginResponse {
   access_token: string;
@@ -40,23 +54,27 @@ export async function login(
   user: AuthUser;
 }> {
   // Login response uses snake_case — manually map
-  const response = await axios.post<{ success: boolean; data: LoginResponse }>(
-    `${process.env.NEXT_PUBLIC_API_URL}/api/v1/auth/login`,
-    { phone, password },
-  );
+  try {
+    const response = await axios.post<{ success: boolean; data: LoginResponse }>(
+      `${process.env.NEXT_PUBLIC_API_URL}/api/v1/auth/login`,
+      { phone, password },
+    );
 
-  const data = response.data.data;
-  return {
-    accessToken: data.access_token,
-    refreshToken: data.refresh_token,
-    expiresIn: data.expires_in,
-    user: {
-      id: data.user.id,
-      name: data.user.name,
-      role: data.user.role,
-      tenantId: data.user.tenant_id,
-    },
-  };
+    const data = response.data.data;
+    return {
+      accessToken: data.access_token,
+      refreshToken: data.refresh_token,
+      expiresIn: data.expires_in,
+      user: {
+        id: data.user.id,
+        name: data.user.name,
+        role: data.user.role,
+        tenantId: data.user.tenant_id,
+      },
+    };
+  } catch (err) {
+    throw extractApiError(err as AxiosError);
+  }
 }
 
 export async function refreshToken(
@@ -66,17 +84,21 @@ export async function refreshToken(
   refreshToken: string;
   expiresIn: number;
 }> {
-  const response = await axios.post<{ success: boolean; data: RefreshResponse }>(
-    `${process.env.NEXT_PUBLIC_API_URL}/api/v1/auth/refresh`,
-    { refresh_token: token },
-  );
+  try {
+    const response = await axios.post<{ success: boolean; data: RefreshResponse }>(
+      `${process.env.NEXT_PUBLIC_API_URL}/api/v1/auth/refresh`,
+      { refresh_token: token },
+    );
 
-  const data = response.data.data;
-  return {
-    accessToken: data.access_token,
-    refreshToken: data.refresh_token,
-    expiresIn: data.expires_in,
-  };
+    const data = response.data.data;
+    return {
+      accessToken: data.access_token,
+      refreshToken: data.refresh_token,
+      expiresIn: data.expires_in,
+    };
+  } catch (err) {
+    throw extractApiError(err as AxiosError);
+  }
 }
 
 export async function logout(): Promise<void> {
