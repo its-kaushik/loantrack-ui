@@ -56,7 +56,7 @@ export function MigrateLoanForm() {
   const [selectedBorrower, setSelectedBorrower] = useState<{ id: string; name: string } | null>(null);
   const [selectedGuarantor, setSelectedGuarantor] = useState<{ id: string; name: string } | null>(null);
   const [showOptional, setShowOptional] = useState(false);
-  const [termPreset, setTermPreset] = useState<'120' | '60' | 'custom'>('120');
+  const [termPreset, setTermPreset] = useState<'120' | '55' | 'custom'>('120');
 
   const migrateMutation = useMigrateLoan();
 
@@ -101,7 +101,7 @@ export function MigrateLoanForm() {
     setValue('loanType', type);
   };
 
-  const handleTermPreset = (preset: '120' | '60' | 'custom') => {
+  const handleTermPreset = (preset: '120' | '55' | 'custom') => {
     setTermPreset(preset);
     if (preset !== 'custom') {
       setValue('termDays', parseInt(preset), { shouldValidate: true });
@@ -309,10 +309,10 @@ export function MigrateLoanForm() {
               <Button
                 type="button"
                 size="sm"
-                variant={termPreset === '60' ? 'default' : 'outline'}
-                onClick={() => handleTermPreset('60')}
+                variant={termPreset === '55' ? 'default' : 'outline'}
+                onClick={() => handleTermPreset('55')}
               >
-                60 days
+                55 days
               </Button>
               <Button
                 type="button"
