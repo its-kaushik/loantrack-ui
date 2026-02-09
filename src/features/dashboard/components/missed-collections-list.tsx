@@ -39,7 +39,7 @@ export function MissedCollectionsList({ items }: MissedCollectionsListProps) {
                 key={item.loanId}
                 className="flex items-center justify-between rounded-md p-2 hover:bg-muted/50"
               >
-                <Link href={`/loans/${item.loanId}`} className="flex-1 min-w-0">
+                <Link href={`/today/record?loanId=${item.loanId}`} className="flex-1 min-w-0">
                   <p className="text-sm font-medium truncate">{item.borrowerName}</p>
                   <p className="text-xs text-muted-foreground">
                     <CurrencyDisplay amount={item.dailyPaymentAmount} />

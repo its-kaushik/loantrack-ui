@@ -17,7 +17,7 @@ function Loading() {
 export default function RecordCollectionPage() {
   return (
     <div>
-      <PageHeader title="Record Collection" backHref="/today" />
+      <PageHeader title="Record Collection" backHref="back" />
       <Suspense fallback={<Loading />}>
         <RecordCollectionForm />
       </Suspense>

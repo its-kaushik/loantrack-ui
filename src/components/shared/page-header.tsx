@@ -21,7 +21,7 @@ export function PageHeader({ title, backHref, action }: PageHeaderProps) {
             variant="ghost"
             size="icon"
             className="h-9 w-9"
-            onClick={() => router.push(backHref)}
+            onClick={() => backHref === 'back' ? router.back() : router.push(backHref)}
           >
             <ArrowLeft className="h-5 w-5" />
           </Button>
