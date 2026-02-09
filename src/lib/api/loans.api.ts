@@ -92,7 +92,17 @@ export interface MissedTodayLoan {
   dailyPaymentAmount: string;
 }
 
-export async function getMissedToday(): Promise<MissedTodayLoan[]> {
-  const response = await apiClient.get<{ missedToday: MissedTodayLoan[] }>('/loans/missed-today');
-  return response.data.missedToday;
+export interface MyCollectionToday {
+  count: number;
+  totalAmount: string;
+}
+
+export interface MissedTodayResponse {
+  myCollectionToday: MyCollectionToday;
+  missedToday: MissedTodayLoan[];
+}
+
+export async function getMissedToday(): Promise<MissedTodayResponse> {
+  const response = await apiClient.get<MissedTodayResponse>('/loans/missed-today');
+  return response.data;
 }

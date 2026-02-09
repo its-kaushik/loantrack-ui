@@ -1,1 +1,1 @@
-export type { MissedTodayLoan } from '@/lib/api/loans.api';
+export type { MissedTodayLoan, MyCollectionToday, MissedTodayResponse } from '@/lib/api/loans.api';

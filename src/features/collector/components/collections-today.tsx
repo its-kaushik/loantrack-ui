@@ -9,7 +9,7 @@ import { useCollectionsToday } from '../hooks/use-collections-today';
 import { Layers } from 'lucide-react';
 
 export function CollectionsToday() {
-  const { data: items, isLoading, refetch, isRefetching } = useCollectionsToday();
+  const { data, isLoading, refetch, isRefetching } = useCollectionsToday();
 
   if (isLoading) {
     return (
@@ -22,11 +22,12 @@ export function CollectionsToday() {
     );
   }
 
-  const allItems = items ?? [];
+  const myCollection = data?.myCollectionToday ?? { count: 0, totalAmount: '0.00' };
+  const allItems = data?.missedToday ?? [];
 
   return (
     <div className="space-y-3">
-      <CashHandoverCard items={allItems} />
+      <CashHandoverCard myCollection={myCollection} missedItems={allItems} />
 
       {allItems.length === 0 ? (
         <p className="text-sm text-muted-foreground text-center py-8">
