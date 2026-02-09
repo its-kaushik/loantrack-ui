@@ -1,6 +1,5 @@
 'use client';
 
-import { useMemo } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -34,15 +33,10 @@ export function RecordCollectionForm() {
   const dailyLoan = loanDetail?.loanType === 'DAILY' ? (loanDetail as DailyLoanDetail) : null;
   const defaultAmount = dailyLoan?.dailyPaymentAmount;
 
-  const [amount, setAmount] = useState<number | undefined>();
+  const [amountOverride, setAmountOverride] = useState<number | undefined>();
   const [notes, setNotes] = useState('');
 
-  // Set default amount when loan detail loads
-  useMemo(() => {
-    if (defaultAmount !== undefined && amount === undefined) {
-      setAmount(defaultAmount);
-    }
-  }, [defaultAmount, amount]);
+  const amount = amountOverride ?? defaultAmount;
 
   if (isLoading) {
     return (
@@ -121,7 +115,7 @@ export function RecordCollectionForm() {
         <Label>Collection Amount</Label>
         <CurrencyInput
           value={amount}
-          onValueChange={setAmount}
+          onValueChange={setAmountOverride}
           placeholder="Enter amount"
         />
       </div>
