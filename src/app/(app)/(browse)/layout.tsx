@@ -20,7 +20,8 @@ const collectorTabs: TabItem[] = [
 export default function BrowseLayout({ children }: { children: React.ReactNode }) {
   const user = useAuthStore((s) => s.user);
   const router = useRouter();
-  const { data: todaySummary } = useTodaySummary();
+  const isCollector = user?.role === 'COLLECTOR';
+  const { data: todaySummary } = useTodaySummary(!isCollector);
 
   const adminTabs: TabItem[] = useMemo(
     () => [
@@ -45,8 +46,8 @@ export default function BrowseLayout({ children }: { children: React.ReactNode }
     return null;
   }
 
-  const tabs = user?.role === 'COLLECTOR' ? collectorTabs : adminTabs;
-  const isReadOnly = user?.role === 'COLLECTOR';
+  const tabs = isCollector ? collectorTabs : adminTabs;
+  const isReadOnly = isCollector;
 
   return (
     <div className="min-h-screen pb-16" data-read-only={isReadOnly || undefined}>
