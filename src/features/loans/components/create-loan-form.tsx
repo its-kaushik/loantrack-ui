@@ -95,7 +95,7 @@ export function CreateLoanForm() {
 
   const dailyPreview = useMemo(() => {
     if (loanType !== 'DAILY' || !principal || !rate || !termDays) return null;
-    const totalRepayment = principal * (1 + (rate / 100) * (termDays / 30));
+    const totalRepayment = principal * (1 + (rate / 100) * Math.ceil(termDays / 30));
     const dailyPayment = totalRepayment / termDays;
     return { totalRepayment, dailyPayment };
   }, [loanType, principal, rate, termDays]);
