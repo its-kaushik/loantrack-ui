@@ -3,26 +3,15 @@
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { useLoanPaymentStatus } from '../hooks/use-loan-payment-status';
-import type { DailyPaymentStatus, DailyPaymentDay } from '../types';
+import type { DailyPaymentStatus } from '../types';
 
 interface CollectionCalendarProps {
   loanId: string;
 }
 
-function getDayStatus(day: DailyPaymentDay): 'paid' | 'missed' | 'future' {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const dayDate = new Date(day.date + 'T00:00:00');
-
-  if (day.isCovered) return 'paid';
-  if (dayDate < today) return 'missed';
-  return 'future';
-}
-
 const statusColors = {
   paid: 'bg-green-500 text-white',
   missed: 'bg-red-500 text-white',
-  future: 'bg-muted text-muted-foreground',
 };
 
 export function CollectionCalendar({ loanId }: CollectionCalendarProps) {
@@ -37,25 +26,28 @@ export function CollectionCalendar({ loanId }: CollectionCalendarProps) {
   }
 
   const status = data as DailyPaymentStatus;
+  const daysElapsed = status.days.length;
 
-  if (status.days.length === 0) {
+  if (daysElapsed === 0) {
     return <p className="text-sm text-muted-foreground py-2">No collection days yet.</p>;
   }
 
+  const daysPaid = Math.floor(status.totalCollected / status.dailyPaymentAmount);
+
   return (
     <div className="grid grid-cols-7 gap-1.5">
-      {status.days.map((day) => {
-        const dayStatus = getDayStatus(day);
+      {Array.from({ length: daysElapsed }, (_, i) => {
+        const dayNumber = i + 1;
+        const isPaid = dayNumber <= daysPaid;
         return (
           <div
-            key={day.dayNumber}
+            key={dayNumber}
             className={cn(
               'flex items-center justify-center rounded-md text-xs font-medium h-9 w-full',
-              statusColors[dayStatus],
+              isPaid ? statusColors.paid : statusColors.missed,
             )}
-            title={`Day ${day.dayNumber} — ${day.date}`}
           >
-            {day.dayNumber}
+            {dayNumber}
           </div>
         );
       })}

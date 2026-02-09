@@ -201,10 +201,6 @@ export function DailyLoanDetail({ loan, readOnly }: DailyLoanDetailProps) {
               <div className="h-3 w-3 rounded-sm bg-red-500" />
               <span>Missed</span>
             </div>
-            <div className="flex items-center gap-1">
-              <div className="h-3 w-3 rounded-sm bg-muted" />
-              <span>Upcoming</span>
-            </div>
           </div>
           <CollectionCalendar loanId={loan.id} />
         </CardContent>
