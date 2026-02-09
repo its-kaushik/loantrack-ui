@@ -74,7 +74,7 @@ export function RecordCollectionForm() {
       },
       {
         onSuccess: () => {
-          router.push('/today');
+          router.back();
         },
       },
     );

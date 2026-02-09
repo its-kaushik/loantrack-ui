@@ -21,7 +21,7 @@ export function useBulkCollect() {
       bulkCollect({ collections }, idempotencyKey),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.transactions.all() });
-      queryClient.invalidateQueries({ queryKey: ['collector', 'collections-today'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.collector.missedToday() });
       queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.today() });
     },
   });

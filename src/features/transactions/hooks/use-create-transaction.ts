@@ -17,6 +17,7 @@ export function useCreateTransaction() {
       queryClient.invalidateQueries({ queryKey: queryKeys.loans.transactions(variables.loanId) });
       queryClient.invalidateQueries({ queryKey: queryKeys.loans.paymentStatus(variables.loanId) });
       queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.today() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.collector.missedToday() });
       toast.success('Transaction recorded successfully');
       router.push(`/loans/${variables.loanId}`);
     },

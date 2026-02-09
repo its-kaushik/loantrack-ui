@@ -1,4 +1,7 @@
 export const queryKeys = {
+  collector: {
+    missedToday: () => ['collector', 'missed-today'] as const,
+  },
   dashboard: {
     today: () => ['dashboard', 'today'] as const,
     overdue: () => ['dashboard', 'overdue'] as const,
