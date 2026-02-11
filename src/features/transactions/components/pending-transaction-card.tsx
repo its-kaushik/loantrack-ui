@@ -47,12 +47,12 @@ export function PendingTransactionCard({ transaction }: PendingTransactionCardPr
           <div className="flex items-start justify-between">
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-1.5 mb-0.5">
-                <p className="text-sm font-medium">{transaction.loanNumber}</p>
+                <p className="text-sm font-medium">{transaction.borrowerName}</p>
                 <Badge variant="outline" className="text-[10px]">
                   {typeLabels[transaction.transactionType] ?? transaction.transactionType}
                 </Badge>
               </div>
-              <p className="text-xs text-muted-foreground">{transaction.borrowerName}</p>
+              <p className="text-xs text-muted-foreground">{transaction.loanNumber}</p>
               {transaction.collectorName && (
                 <p className="text-xs text-muted-foreground">
                   By {transaction.collectorName}
