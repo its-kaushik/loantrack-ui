@@ -34,9 +34,15 @@ export function RecordCollectionForm() {
   const defaultAmount = dailyLoan?.dailyPaymentAmount;
 
   const [amountOverride, setAmountOverride] = useState<number | undefined>();
+  const [userEdited, setUserEdited] = useState(false);
   const [notes, setNotes] = useState('');
 
-  const amount = amountOverride ?? defaultAmount;
+  const amount = userEdited ? amountOverride : (amountOverride ?? defaultAmount);
+
+  const handleAmountChange = (val: number | undefined) => {
+    setUserEdited(true);
+    setAmountOverride(val);
+  };
 
   if (isLoading) {
     return (
@@ -115,7 +121,7 @@ export function RecordCollectionForm() {
         <Label>Collection Amount</Label>
         <CurrencyInput
           value={amount}
-          onValueChange={setAmountOverride}
+          onValueChange={handleAmountChange}
           placeholder="Enter amount"
         />
       </div>
