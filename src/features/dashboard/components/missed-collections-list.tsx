@@ -37,23 +37,27 @@ export function MissedCollectionsList({ items }: MissedCollectionsListProps) {
             {visibleItems.map((item) => (
               <div
                 key={item.loanId}
-                className="flex items-center justify-between rounded-md p-2 hover:bg-muted/50"
+                className="flex items-start justify-between rounded-md p-2 hover:bg-muted/50"
               >
                 <Link href={`/today/record?loanId=${item.loanId}`} className="flex-1 min-w-0">
                   <p className="text-sm font-medium truncate">{item.borrowerName}</p>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs text-muted-foreground">{item.disbursementDate}</p>
+                </Link>
+                <div className="flex items-center gap-2 flex-shrink-0 ml-3">
+                  <p className="text-sm font-semibold">
                     <CurrencyDisplay amount={item.dailyPaymentAmount} />
                   </p>
-                </Link>
-                {item.borrowerPhone && (
-                  <a
-                    href={`tel:${item.borrowerPhone}`}
-                    className="ml-2 p-2 rounded-full text-primary hover:bg-primary/10"
-                    aria-label={`Call ${item.borrowerName}`}
-                  >
-                    <Phone className="h-4 w-4" />
-                  </a>
-                )}
+                  {item.borrowerPhone && (
+                    <a
+                      href={`tel:${item.borrowerPhone}`}
+                      onClick={(e) => e.stopPropagation()}
+                      className="p-2 rounded-full hover:bg-muted"
+                      aria-label={`Call ${item.borrowerName}`}
+                    >
+                      <Phone className="h-4 w-4 text-primary" />
+                    </a>
+                  )}
+                </div>
               </div>
             ))}
             {items.length > INITIAL_VISIBLE && !showAll && (

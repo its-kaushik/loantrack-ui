@@ -8,6 +8,7 @@ export interface MissedCollectionItem {
   borrowerName: string;
   borrowerPhone: string | null;
   dailyPaymentAmount: string;
+  disbursementDate: string;
 }
 
 export interface MonthlyInterestDueItem {

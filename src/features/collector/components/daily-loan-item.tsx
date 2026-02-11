@@ -20,6 +20,7 @@ export function DailyLoanItem({ item }: DailyLoanItemProps) {
             className="min-w-0 flex-1"
           >
             <p className="text-sm font-medium truncate">{item.borrowerName}</p>
+            <p className="text-xs text-muted-foreground">{item.disbursementDate}</p>
           </Link>
 
           <div className="flex items-center gap-2 flex-shrink-0 ml-3">

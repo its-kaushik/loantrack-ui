@@ -90,6 +90,7 @@ export interface MissedTodayLoan {
   borrowerName: string;
   borrowerPhone: string;
   dailyPaymentAmount: string;
+  disbursementDate: string;
 }
 
 export interface MyCollectionToday {
