@@ -20,18 +20,6 @@ const withPWA = withPWAInit({
           },
         },
       },
-      {
-        urlPattern: /\/api\/v1\/(dashboard|loans|customers|fund|reports|platform)/,
-        handler: "NetworkFirst",
-        options: {
-          cacheName: "api-cache",
-          networkTimeoutSeconds: 5,
-          expiration: {
-            maxEntries: 100,
-            maxAgeSeconds: 24 * 60 * 60, // 24 hours
-          },
-        },
-      },
     ],
   },
 });
