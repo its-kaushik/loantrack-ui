@@ -11,7 +11,6 @@ export const waivePenaltySchema = z.object({
 });
 
 export const waiveInterestSchema = z.object({
-  effectiveDate: z.string().min(1, 'Billing cycle date is required'),
   waiveAmount: z.number().positive('Waive amount must be greater than 0'),
   notes: z.string().max(2000).optional(),
 });

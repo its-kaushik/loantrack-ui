@@ -45,7 +45,6 @@ describe('createTransactionSchema', () => {
   it('accepts optional fields', () => {
     const result = createTransactionSchema.safeParse({
       ...validTransaction,
-      effectiveDate: '2026-01-16',
       penaltyId: 'pen-1',
       correctedTransactionId: 'txn-1',
       notes: 'Test note',

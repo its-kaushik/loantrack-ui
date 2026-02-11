@@ -78,7 +78,6 @@ export function RecordPaymentForm() {
       transactionType: undefined,
       amount: undefined,
       transactionDate: todayString(),
-      effectiveDate: undefined,
       penaltyId: undefined,
       notes: '',
     },
@@ -86,7 +85,6 @@ export function RecordPaymentForm() {
   });
 
   const loanId = watch('loanId');
-  const transactionType = watch('transactionType');
 
   // Sync prefilledLoanId into form (useSearchParams may resolve after mount during client-side navigation)
   useEffect(() => {
@@ -160,7 +158,6 @@ export function RecordPaymentForm() {
   const onSubmit = (data: CreateTransactionFormValues) => {
     createMutation.mutate({
       ...data,
-      effectiveDate: data.effectiveDate || undefined,
       penaltyId: data.penaltyId || undefined,
       notes: data.notes || undefined,
     });
@@ -273,27 +270,6 @@ export function RecordPaymentForm() {
           <p className="text-xs text-destructive">{errors.transactionDate.message}</p>
         )}
       </div>
-
-      {/* Effective Date (only for INTEREST_PAYMENT) */}
-      {transactionType === 'INTEREST_PAYMENT' && (
-        <div className="space-y-2">
-          <Label>Effective Date (billing cycle)</Label>
-          <Controller
-            name="effectiveDate"
-            control={control}
-            render={({ field }) => (
-              <DatePicker
-                value={field.value}
-                onChange={field.onChange}
-                placeholder="Select effective date"
-              />
-            )}
-          />
-          {errors.effectiveDate && (
-            <p className="text-xs text-destructive">{errors.effectiveDate.message}</p>
-          )}
-        </div>
-      )}
 
       {/* Notes */}
       <div className="space-y-2">

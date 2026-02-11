@@ -63,7 +63,6 @@ export interface CreateTransactionRequest {
     | 'GUARANTOR_PAYMENT';
   amount: number;
   transactionDate: string;
-  effectiveDate?: string;
   penaltyId?: string;
   correctedTransactionId?: string;
   notes?: string;

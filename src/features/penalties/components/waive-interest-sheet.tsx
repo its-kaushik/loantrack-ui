@@ -6,7 +6,6 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { CurrencyInput } from '@/components/shared/currency-input';
 import { CurrencyDisplay } from '@/components/shared/currency-display';
-import { DatePicker } from '@/components/shared/date-picker';
 import {
   Sheet,
   SheetContent,
@@ -30,20 +29,18 @@ export function WaiveInterestSheet({
   loanId,
   monthlyInterestDue,
 }: WaiveInterestSheetProps) {
-  const [effectiveDate, setEffectiveDate] = useState<string | undefined>();
   const [waiveAmount, setWaiveAmount] = useState<number | undefined>();
   const [notes, setNotes] = useState('');
   const waiveMutation = useWaiveInterest(loanId);
 
   const handleWaive = () => {
-    if (!effectiveDate || !waiveAmount) return;
+    if (!waiveAmount) return;
 
     waiveMutation.mutate(
-      { effectiveDate, waiveAmount, notes: notes.trim() || undefined },
+      { waiveAmount, notes: notes.trim() || undefined },
       {
         onSuccess: () => {
           onOpenChange(false);
-          setEffectiveDate(undefined);
           setWaiveAmount(undefined);
           setNotes('');
         },
@@ -57,7 +54,7 @@ export function WaiveInterestSheet({
         <SheetHeader>
           <SheetTitle>Waive Interest</SheetTitle>
           <SheetDescription>
-            Waive full or partial interest for a billing cycle.
+            Waive full or partial interest for the next unsettled billing cycle.
           </SheetDescription>
         </SheetHeader>
 
@@ -69,15 +66,6 @@ export function WaiveInterestSheet({
                 <CurrencyDisplay amount={monthlyInterestDue} />
               </span>
             </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label>Billing Cycle Date</Label>
-            <DatePicker
-              value={effectiveDate}
-              onChange={setEffectiveDate}
-              placeholder="Select billing cycle date"
-            />
           </div>
 
           <div className="space-y-2">
@@ -105,7 +93,6 @@ export function WaiveInterestSheet({
           <Button
             onClick={handleWaive}
             disabled={
-              !effectiveDate ||
               !waiveAmount ||
               waiveAmount <= 0 ||
               waiveMutation.isPending

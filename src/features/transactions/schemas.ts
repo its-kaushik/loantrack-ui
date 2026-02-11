@@ -11,7 +11,6 @@ export const createTransactionSchema = z.object({
   ]),
   amount: z.number().positive('Amount must be greater than 0'),
   transactionDate: z.string().min(1, 'Transaction date is required'),
-  effectiveDate: z.string().optional(),
   penaltyId: z.string().optional(),
   correctedTransactionId: z.string().optional(),
   notes: z.string().max(2000).optional(),

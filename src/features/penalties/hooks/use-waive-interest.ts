@@ -7,7 +7,7 @@ export function useWaiveInterest(loanId: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (body: { effectiveDate: string; waiveAmount: number; notes?: string }) =>
+    mutationFn: (body: { waiveAmount: number; notes?: string }) =>
       waiveInterest(loanId, body),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.loans.detail(loanId) });

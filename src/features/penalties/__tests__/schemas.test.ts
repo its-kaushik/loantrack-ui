@@ -48,23 +48,13 @@ describe('waivePenaltySchema', () => {
 describe('waiveInterestSchema', () => {
   it('accepts valid input', () => {
     const result = waiveInterestSchema.safeParse({
-      effectiveDate: '2026-01-15',
       waiveAmount: 3000,
     });
     expect(result.success).toBe(true);
   });
 
-  it('rejects empty effectiveDate', () => {
-    const result = waiveInterestSchema.safeParse({
-      effectiveDate: '',
-      waiveAmount: 3000,
-    });
-    expect(result.success).toBe(false);
-  });
-
   it('rejects zero waiveAmount', () => {
     const result = waiveInterestSchema.safeParse({
-      effectiveDate: '2026-01-15',
       waiveAmount: 0,
     });
     expect(result.success).toBe(false);

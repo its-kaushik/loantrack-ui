@@ -37,7 +37,7 @@ export async function waivePenalty(
 
 export async function waiveInterest(
   loanId: string,
-  body: { effectiveDate: string; waiveAmount: number; notes?: string },
+  body: { waiveAmount: number; notes?: string },
 ): Promise<Waiver> {
   const response = await apiClient.post<Waiver>(
     `/loans/${loanId}/waive-interest`,

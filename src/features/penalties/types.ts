@@ -12,7 +12,6 @@ export interface WaivePenaltyParams {
 
 export interface WaiveInterestParams {
   loanId: string;
-  effectiveDate: string;
   waiveAmount: number;
   notes?: string;
 }
