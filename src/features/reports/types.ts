@@ -3,7 +3,10 @@ import type { LoanType, LoanStatus } from '@/types/enums';
 export interface ProfitLossReport {
   totalCapitalInvested: string;
   moneyDeployed: string;
+  dailyDisbursed: string;
+  monthlyDisbursed: string;
   totalInterestEarned: string;
+  totalReceived: string;
   moneyLostToDefaults: string;
   totalExpenses: string;
   revenueForgone: string;

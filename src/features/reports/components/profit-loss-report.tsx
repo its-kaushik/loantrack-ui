@@ -10,7 +10,10 @@ import { useProfitLoss } from '../hooks/use-profit-loss';
 import {
   Landmark,
   ArrowUpRight,
+  CalendarClock,
+  CalendarDays,
   TrendingUp,
+  ArrowDownLeft,
   ShieldAlert,
   Receipt,
   HandCoins,
@@ -55,7 +58,7 @@ export function ProfitLossReport() {
 
       {isLoading && (
         <div className="space-y-2">
-          {Array.from({ length: 8 }).map((_, i) => (
+          {Array.from({ length: 11 }).map((_, i) => (
             <Skeleton key={i} className="h-12 rounded-lg" />
           ))}
         </div>
@@ -70,7 +73,10 @@ export function ProfitLossReport() {
           <CardContent className="py-2 divide-y">
             <LineItem label="Total Capital Invested" amount={data.totalCapitalInvested} icon={Landmark} />
             <LineItem label="Money Deployed" amount={data.moneyDeployed} icon={ArrowUpRight} />
+            <LineItem label="Daily Disbursed" amount={data.dailyDisbursed} icon={CalendarClock} />
+            <LineItem label="Monthly Disbursed" amount={data.monthlyDisbursed} icon={CalendarDays} />
             <LineItem label="Total Interest Earned" amount={data.totalInterestEarned} icon={TrendingUp} />
+            <LineItem label="Total Received" amount={data.totalReceived} icon={ArrowDownLeft} />
             <LineItem label="Money Lost to Defaults" amount={data.moneyLostToDefaults} icon={ShieldAlert} />
             <LineItem label="Total Expenses" amount={data.totalExpenses} icon={Receipt} />
             <LineItem label="Revenue Forgone" amount={data.revenueForgone} icon={HandCoins} />
