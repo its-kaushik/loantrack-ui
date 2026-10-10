@@ -6,7 +6,7 @@ import { InfiniteList } from '@/components/shared/infinite-list';
 import { EmptyState } from '@/components/shared/empty-state';
 import { TransactionListFilters } from '@/features/transactions/components/transaction-list-filters';
 import { TransactionRow } from '@/features/transactions/components/transaction-row';
-import { ReversalSheet } from '@/features/transactions/components/reversal-sheet';
+import { RemoveEntrySheet } from '@/features/transactions/components/remove-entry-sheet';
 import { useTransactions } from '@/features/transactions/hooks/use-transactions';
 import type { ApprovalStatus, TransactionType } from '@/types/enums';
 import type { TransactionDetail } from '@/types/entities';
@@ -16,19 +16,13 @@ export default function TransactionHistoryPage() {
   const [transactionType, setTransactionType] = useState<TransactionType | undefined>();
   const [collectedBy, setCollectedBy] = useState<string | undefined>();
 
-  const [reversalTarget, setReversalTarget] = useState<TransactionDetail | null>(null);
-  const [reversalOpen, setReversalOpen] = useState(false);
+  const [removeTarget, setRemoveTarget] = useState<string | null>(null);
 
   const query = useTransactions({
     approvalStatus,
     transactionType,
     collectedBy,
   });
-
-  const handleReverse = (txn: TransactionDetail) => {
-    setReversalTarget(txn);
-    setReversalOpen(true);
-  };
 
   return (
     <div>
@@ -45,10 +39,7 @@ export default function TransactionHistoryPage() {
         <InfiniteList<TransactionDetail>
           query={query}
           renderItem={(txn) => (
-            <TransactionRow
-              transaction={txn}
-              onReverse={handleReverse}
-            />
+            <TransactionRow transaction={txn} onRemove={setRemoveTarget} />
           )}
           itemKey={(txn) => txn.id}
           emptyState={
@@ -60,10 +51,10 @@ export default function TransactionHistoryPage() {
         />
       </div>
 
-      <ReversalSheet
-        open={reversalOpen}
-        onOpenChange={setReversalOpen}
-        transaction={reversalTarget}
+      <RemoveEntrySheet
+        open={removeTarget !== null}
+        onOpenChange={(open) => !open && setRemoveTarget(null)}
+        transactionId={removeTarget}
       />
     </div>
   );

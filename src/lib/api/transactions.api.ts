@@ -1,6 +1,6 @@
 import apiClient from './client';
 import type { PaginatedResponse } from '@/types/api';
-import type { Transaction, TransactionDetail } from '@/types/entities';
+import type { Entry, FixEntryResult, Transaction, TransactionDetail } from '@/types/entities';
 import type { CreateTransactionRequest } from '@/types/requests';
 
 export interface ListTransactionsParams {
@@ -63,6 +63,35 @@ export async function rejectTransaction(
   const response = await apiClient.patch<TransactionDetail>(
     `/transactions/${id}/reject`,
     { rejectionReason: reason },
+  );
+  return response.data;
+}
+
+export async function getEntry(transactionId: string): Promise<Entry> {
+  const response = await apiClient.get<Entry>(`/transactions/${transactionId}/entry`);
+  return response.data;
+}
+
+/** Undoes a wrongly recorded payment and records `replacement` in its place, as one operation. */
+export async function fixEntry(
+  transactionId: string,
+  replacement: Omit<CreateTransactionRequest, 'correctedTransactionId'>,
+): Promise<FixEntryResult> {
+  const response = await apiClient.post<FixEntryResult>(
+    `/transactions/${transactionId}/fix`,
+    replacement,
+  );
+  return response.data;
+}
+
+/** Undoes a payment that should not have been recorded at all. */
+export async function removeEntry(
+  transactionId: string,
+  body: { reason?: string },
+): Promise<FixEntryResult> {
+  const response = await apiClient.post<FixEntryResult>(
+    `/transactions/${transactionId}/remove`,
+    body,
   );
   return response.data;
 }

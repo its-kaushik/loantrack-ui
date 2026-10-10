@@ -118,6 +118,35 @@ export interface Transaction {
   approvalStatus: ApprovalStatus;
   notes: string | null;
   createdAt: string;
+  /** Set on a row that undoes another one. */
+  correctedTransactionId: string | null;
+  isCorrection: boolean;
+  /** True once another row has undone this one. */
+  isCorrected: boolean;
+  /** Only on a loan's transaction list: whether an admin may fix or remove this entry. */
+  canFix?: boolean;
+}
+
+/** One recorded payment as it was entered. It can be stored as several rows. */
+export interface Entry {
+  transactionId: string;
+  loanId: string;
+  loanNumber: string;
+  borrowerName: string;
+  loanType: LoanType;
+  transactionType: TransactionType | null;
+  amount: number;
+  transactionDate: string | null;
+  notes: string | null;
+  canFix: boolean;
+  /** Why it cannot be changed, when canFix is false. */
+  reason: string | null;
+  rows: Transaction[];
+}
+
+export interface FixEntryResult {
+  removed: Transaction[];
+  recorded: Transaction[];
 }
 
 export interface TransactionDetail extends Transaction {

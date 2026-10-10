@@ -3,42 +3,48 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent } from '@/components/ui/card';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { Skeleton } from '@/components/ui/skeleton';
 import { CurrencyInput } from '@/components/shared/currency-input';
 import { CurrencyDisplay } from '@/components/shared/currency-display';
+import { ConfirmationDialog } from '@/components/shared/confirmation-dialog';
 import { DatePicker } from '@/components/shared/date-picker';
 import { LoanPicker } from '@/components/shared/loan-picker';
 import { useLoanDetail } from '@/features/loans/hooks/use-loan-detail';
 import { useCreateTransaction } from '../hooks/use-create-transaction';
+import { useEntry, useFixEntry } from '../hooks/use-entry';
 import { createTransactionSchema, type CreateTransactionFormValues } from '../schemas';
-import { generateIdempotencyKey } from '@/utils/idempotency';
+import { paymentTypeLabel } from '../labels';
+import { formatCurrency } from '@/utils/currency';
+import { formatDate } from '@/utils/date';
 import type { ApiError } from '@/types/api';
 import type { Loan, MonthlyLoanDetail, DailyLoanDetail } from '@/types/entities';
-import type { TransactionType } from '@/types/enums';
 
-const monthlyTransactionTypes: { value: TransactionType; label: string }[] = [
-  { value: 'INTEREST_PAYMENT', label: 'Interest Payment' },
-  { value: 'PRINCIPAL_RETURN', label: 'Principal Return' },
-  { value: 'PENALTY', label: 'Penalty' },
-  { value: 'GUARANTOR_PAYMENT', label: 'Guarantor Payment' },
-];
+type PaymentType = CreateTransactionFormValues['transactionType'];
 
-const dailyTransactionTypes: { value: TransactionType; label: string }[] = [
-  { value: 'DAILY_COLLECTION', label: 'Daily Collection' },
-  { value: 'PENALTY', label: 'Penalty' },
-  { value: 'GUARANTOR_PAYMENT', label: 'Guarantor Payment' },
-];
+const typeButtonLabels: Record<PaymentType, string> = {
+  INTEREST_PAYMENT: 'Interest',
+  PRINCIPAL_RETURN: 'Principal',
+  DAILY_COLLECTION: 'Collection',
+  PENALTY: 'Penalty',
+  GUARANTOR_PAYMENT: 'Guarantor',
+};
+
+/** The kinds of payment the server accepts for a loan. The first is the usual one. */
+function paymentTypesFor(loanType: string | undefined, loanStatus: string | undefined): PaymentType[] {
+  if (!loanType) return [];
+  const types: PaymentType[] =
+    loanType === 'DAILY'
+      ? ['DAILY_COLLECTION', 'PENALTY']
+      : ['INTEREST_PAYMENT', 'PRINCIPAL_RETURN'];
+  // Guarantor payments are only accepted on a defaulted loan
+  if (loanStatus === 'DEFAULTED') types.push('GUARANTOR_PAYMENT');
+  return types;
+}
 
 function todayString(): string {
   const d = new Date();
@@ -49,12 +55,19 @@ function todayString(): string {
 }
 
 export function RecordPaymentForm() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const prefilledLoanId = searchParams.get('loanId') ?? undefined;
+  // Fix mode: correcting a payment that was recorded wrongly. It is undone and
+  // replaced by whatever is saved here, as one operation.
+  const fixId = searchParams.get('fix') ?? undefined;
+  const isFixing = !!fixId;
 
-  const idempotencyKeyRef = useRef(generateIdempotencyKey());
   const lastPrefilledLoanRef = useRef<string>('');
+  const entryAppliedRef = useRef(false);
   const createMutation = useCreateTransaction();
+  const fixMutation = useFixEntry(fixId ?? '');
+  const { data: entry, isLoading: entryLoading, isError: entryError } = useEntry(fixId);
 
   const [selectedLoan, setSelectedLoan] = useState<{
     id: string;
@@ -62,12 +75,17 @@ export function RecordPaymentForm() {
     borrowerName: string;
     loanType: string;
   } | null>(null);
+  // A principal return waits here for confirmation before it is sent
+  const [awaitingConfirmation, setAwaitingConfirmation] = useState<CreateTransactionFormValues | null>(null);
+  const [nothingChanged, setNothingChanged] = useState(false);
 
   const {
     handleSubmit,
     control,
     watch,
     setValue,
+    getValues,
+    reset,
     register,
     formState: { errors },
   } = useForm<CreateTransactionFormValues>({
@@ -85,6 +103,8 @@ export function RecordPaymentForm() {
   });
 
   const loanId = watch('loanId');
+  const transactionType = watch('transactionType');
+  const amount = watch('amount');
 
   // Sync prefilledLoanId into form (useSearchParams may resolve after mount during client-side navigation)
   useEffect(() => {
@@ -92,6 +112,29 @@ export function RecordPaymentForm() {
       setValue('loanId', prefilledLoanId);
     }
   }, [prefilledLoanId, loanId, setValue]);
+
+  // Fix mode: start from the entry exactly as it was recorded
+  useEffect(() => {
+    if (!entry || !entry.canFix || !entry.transactionType || entryAppliedRef.current) return;
+    entryAppliedRef.current = true;
+    // keep the entry's own type and amount instead of this loan's defaults
+    lastPrefilledLoanRef.current = entry.loanId;
+
+    setSelectedLoan({
+      id: entry.loanId,
+      loanNumber: entry.loanNumber,
+      borrowerName: entry.borrowerName,
+      loanType: entry.loanType,
+    });
+    reset({
+      loanId: entry.loanId,
+      transactionType: entry.transactionType as PaymentType,
+      amount: entry.amount,
+      transactionDate: entry.transactionDate ?? todayString(),
+      penaltyId: undefined,
+      notes: entry.notes ?? '',
+    });
+  }, [entry, reset]);
 
   // Fetch loan detail for reference amounts — use prefilledLoanId as fallback
   // so the query fires immediately even before the form's loanId syncs
@@ -111,8 +154,18 @@ export function RecordPaymentForm() {
       });
     }
 
-    const defaultType = loanDetail.loanType === 'DAILY' ? 'DAILY_COLLECTION' : 'INTEREST_PAYMENT';
-    setValue('transactionType', defaultType);
+    const allowed = paymentTypesFor(loanDetail.loanType, loanDetail.status);
+
+    if (isFixing) {
+      // The entry is being moved to another loan: keep the amount being corrected,
+      // and change the type only if this loan cannot take it
+      if (!allowed.includes(getValues('transactionType'))) {
+        setValue('transactionType', allowed[0]);
+      }
+      return;
+    }
+
+    setValue('transactionType', allowed[0]);
 
     const defaultAmount = loanDetail.loanType === 'DAILY'
       ? (loanDetail as DailyLoanDetail).dailyPaymentAmount
@@ -120,10 +173,16 @@ export function RecordPaymentForm() {
     if (defaultAmount) {
       setValue('amount', defaultAmount);
     }
-  }, [loanDetail, selectedLoan, setValue]);
+  }, [loanDetail, selectedLoan, setValue, getValues, isFixing]);
 
   const loanType = selectedLoan?.loanType ?? loanDetail?.loanType;
-  const availableTypes = loanType === 'DAILY' ? dailyTransactionTypes : monthlyTransactionTypes;
+  const loanStatus = loanDetail && loanDetail.id === loanId ? loanDetail.status : undefined;
+  const availableTypes = paymentTypesFor(loanType, loanStatus);
+
+  const monthlyLoan =
+    loanDetail && loanDetail.id === loanId && loanDetail.loanType === 'MONTHLY'
+      ? (loanDetail as MonthlyLoanDetail)
+      : null;
 
   // Reference amounts
   const referenceInfo = useMemo(() => {
@@ -142,6 +201,28 @@ export function RecordPaymentForm() {
     };
   }, [loanDetail]);
 
+  // Preview of what a principal return does to the loan. The server applies the real change.
+  const principalEffect = useMemo(() => {
+    if (transactionType !== 'PRINCIPAL_RETURN' || !monthlyLoan || !amount || amount <= 0) return null;
+
+    // When fixing an entry on this same loan, its own principal return is undone first
+    const undone =
+      entry && entry.loanId === monthlyLoan.id
+        ? entry.rows
+            .filter((r) => r.transactionType === 'PRINCIPAL_RETURN')
+            .reduce((sum, r) => sum + r.amount, 0)
+        : 0;
+    const from = monthlyLoan.remainingPrincipal + undone;
+    return { from, to: from - amount };
+  }, [transactionType, monthlyLoan, amount, entry]);
+
+  // The first unpaid month is due this month or earlier
+  const unpaidInterestDueDate =
+    monthlyLoan?.nextDueDate &&
+    (monthlyLoan.isOverdue || monthlyLoan.nextDueDate.slice(0, 7) <= todayString().slice(0, 7))
+      ? monthlyLoan.nextDueDate
+      : null;
+
   const handleLoanSelect = (id: string, loan: Loan) => {
     setValue('loanId', id, { shouldValidate: true });
     setSelectedLoan({
@@ -150,20 +231,92 @@ export function RecordPaymentForm() {
       borrowerName: loan.borrowerName,
       loanType: loan.loanType,
     });
-    // Set default transaction type based on loan type
-    const defaultType = loan.loanType === 'DAILY' ? 'DAILY_COLLECTION' : 'INTEREST_PAYMENT';
-    setValue('transactionType', defaultType, { shouldValidate: false });
+    const allowed = paymentTypesFor(loan.loanType, loan.status);
+    // Recording: start from this loan's usual type. Fixing: keep the type unless this loan cannot take it.
+    if (!isFixing || !allowed.includes(getValues('transactionType'))) {
+      setValue('transactionType', allowed[0], { shouldValidate: false });
+    }
   };
 
-  const onSubmit = (data: CreateTransactionFormValues) => {
-    createMutation.mutate({
+  const send = (data: CreateTransactionFormValues) => {
+    const body = {
       ...data,
       penaltyId: data.penaltyId || undefined,
       notes: data.notes || undefined,
-    });
+    };
+
+    if (isFixing) {
+      fixMutation.mutate(body, {
+        onSuccess: () => router.push(`/loans/${body.loanId}`),
+      });
+    } else {
+      createMutation.mutate(body);
+    }
   };
 
-  const apiError = createMutation.error as unknown as ApiError | undefined;
+  const onSubmit = (data: CreateTransactionFormValues) => {
+    if (
+      entry &&
+      data.loanId === entry.loanId &&
+      data.transactionType === entry.transactionType &&
+      data.amount === entry.amount &&
+      data.transactionDate === entry.transactionDate
+    ) {
+      setNothingChanged(true);
+      return;
+    }
+    setNothingChanged(false);
+
+    // Taking money off the principal by mistake is the costly error, so it is confirmed first
+    if (data.transactionType === 'PRINCIPAL_RETURN') {
+      setAwaitingConfirmation(data);
+      return;
+    }
+    send(data);
+  };
+
+  const isPending = createMutation.isPending || fixMutation.isPending;
+  const apiError = (isFixing ? fixMutation.error : createMutation.error) as unknown as
+    | ApiError
+    | undefined;
+
+  if (isFixing && entryLoading) {
+    return (
+      <div className="space-y-4 p-4">
+        <Skeleton className="h-20 w-full rounded-lg" />
+        <Skeleton className="h-10 w-full" />
+        <Skeleton className="h-10 w-full" />
+      </div>
+    );
+  }
+
+  if (isFixing && (entryError || !entry || !entry.canFix)) {
+    return (
+      <div className="space-y-4 p-4">
+        <div role="alert" className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
+          {entry?.reason ?? 'This entry could not be loaded.'}
+        </div>
+        <Button variant="outline" className="w-full" onClick={() => router.back()}>
+          Go Back
+        </Button>
+      </div>
+    );
+  }
+
+  const confirmation = awaitingConfirmation;
+  const confirmationText = confirmation
+    ? [
+        principalEffect
+          ? `${formatCurrency(confirmation.amount)} will be taken off the principal: ${formatCurrency(principalEffect.from)} to ${formatCurrency(principalEffect.to)}.`
+          : `${formatCurrency(confirmation.amount)} will be taken off the principal.`,
+        monthlyLoan && unpaidInterestDueDate
+          ? `Interest of ${formatCurrency(monthlyLoan.monthlyInterestDue)} due on ${formatDate(unpaidInterestDueDate)} has not been recorded yet.`
+          : null,
+        'If this was an interest payment, cancel and choose Interest.',
+      ]
+        .filter(Boolean)
+        .join(' ')
+    : '';
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 p-4">
@@ -171,6 +324,25 @@ export function RecordPaymentForm() {
         <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
           {apiError.message || 'Failed to record transaction. Please try again.'}
         </div>
+      )}
+
+      {/* Fix mode: what is being corrected */}
+      {entry && (
+        <Card className="border-amber-300 bg-amber-50">
+          <CardContent className="py-3 text-sm space-y-1">
+            <p className="font-medium">Fixing this entry</p>
+            <p>
+              {paymentTypeLabel(entry.transactionType)} &middot; <CurrencyDisplay amount={entry.amount} />
+              {entry.transactionDate && <> &middot; {formatDate(entry.transactionDate)}</>}
+            </p>
+            <p className="text-muted-foreground">
+              {entry.loanNumber} — {entry.borrowerName}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              It will be undone and replaced by what you save below.
+            </p>
+          </CardContent>
+        </Card>
       )}
 
       {/* Loan Picker */}
@@ -195,27 +367,28 @@ export function RecordPaymentForm() {
 
       {/* Transaction Type */}
       <div className="space-y-2">
-        <Label>Transaction Type</Label>
+        <Label id="transaction-type-label">Transaction Type</Label>
         <Controller
           name="transactionType"
           control={control}
           render={({ field }) => (
-            <Select
-              value={field.value}
-              onValueChange={field.onChange}
-              disabled={!loanId}
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select type..." />
-              </SelectTrigger>
-              <SelectContent>
-                {availableTypes.map((t) => (
-                  <SelectItem key={t.value} value={t.value}>
-                    {t.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div role="group" aria-labelledby="transaction-type-label" className="flex gap-2">
+              {availableTypes.length === 0 && (
+                <p className="text-sm text-muted-foreground">Select a loan first.</p>
+              )}
+              {availableTypes.map((type) => (
+                <Button
+                  key={type}
+                  type="button"
+                  variant={field.value === type ? 'default' : 'outline'}
+                  aria-pressed={field.value === type}
+                  className="flex-1"
+                  onClick={() => field.onChange(type)}
+                >
+                  {typeButtonLabels[type]}
+                </Button>
+              ))}
+            </div>
           )}
         />
         {errors.transactionType && (
@@ -250,6 +423,12 @@ export function RecordPaymentForm() {
         {errors.amount && (
           <p className="text-xs text-destructive">{errors.amount.message}</p>
         )}
+        {principalEffect && (
+          <p className="text-xs font-medium text-amber-700">
+            Principal will go from <CurrencyDisplay amount={principalEffect.from} /> to{' '}
+            <CurrencyDisplay amount={principalEffect.to} />
+          </p>
+        )}
       </div>
 
       {/* Transaction Date */}
@@ -282,14 +461,35 @@ export function RecordPaymentForm() {
         />
       </div>
 
+      {nothingChanged && (
+        <p role="alert" className="text-sm text-destructive">
+          Change the loan, type, amount or date before saving.
+        </p>
+      )}
+
       {/* Submit */}
       <Button
         type="submit"
         className="w-full"
-        disabled={createMutation.isPending}
+        disabled={isPending}
       >
-        {createMutation.isPending ? 'Recording...' : 'Record Payment'}
+        {isFixing
+          ? (isPending ? 'Saving...' : 'Save Correction')
+          : (isPending ? 'Recording...' : 'Record Payment')}
       </Button>
+
+      <ConfirmationDialog
+        open={confirmation !== null}
+        onOpenChange={(open) => !open && setAwaitingConfirmation(null)}
+        title="Record as a principal return?"
+        description={confirmationText}
+        confirmLabel="Yes, Principal Return"
+        onConfirm={() => {
+          if (confirmation) send(confirmation);
+          setAwaitingConfirmation(null);
+        }}
+        loading={isPending}
+      />
     </form>
   );
 }

@@ -21,6 +21,7 @@ export const queryKeys = {
     all: () => ['transactions'] as const,
     list: (filters: Record<string, unknown>) => ['transactions', 'list', filters] as const,
     pending: (f?: Record<string, unknown>) => ['transactions', 'pending', f] as const,
+    entry: (id: string) => ['transactions', 'entry', id] as const,
   },
   customers: {
     all: () => ['customers'] as const,

@@ -1,33 +1,32 @@
 'use client';
 
+import { useEffect, useRef, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { CurrencyDisplay } from '@/components/shared/currency-display';
 import { StatusBadge } from '@/components/shared/status-badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { EntryActionsMenu } from '@/features/transactions/components/entry-actions-menu';
+import { RemoveEntrySheet } from '@/features/transactions/components/remove-entry-sheet';
+import { paymentTypeLabel } from '@/features/transactions/labels';
+import { useAuth } from '@/features/auth/hooks/use-auth';
 import { useLoanTransactions } from '../hooks/use-loan-transactions';
 import { formatDate } from '@/utils/date';
 import type { Transaction } from '@/types/entities';
 import { cn } from '@/lib/utils';
-import { useEffect, useRef } from 'react';
 
 interface LoanTransactionListProps {
   loanId: string;
 }
 
-function TransactionTypeLabel({ type }: { type: string }) {
-  const labels: Record<string, string> = {
-    INTEREST_PAYMENT: 'Interest',
-    PRINCIPAL_RETURN: 'Principal Return',
-    DAILY_COLLECTION: 'Collection',
-    PENALTY: 'Penalty',
-    GUARANTOR_PAYMENT: 'Guarantor',
-  };
-  return <span>{labels[type] ?? type}</span>;
+interface TransactionRowProps {
+  txn: Transaction;
+  /** Given only to admins, and only for entries the server says may be changed. */
+  onRemove?: (transactionId: string) => void;
 }
 
-function TransactionRow({ txn }: { txn: Transaction }) {
-  const isCorrective = txn.amount < 0;
-  const isCorrected = txn.notes?.includes('[CORRECTED]') || false;
+function TransactionRow({ txn, onRemove }: TransactionRowProps) {
+  const isCorrection = txn.isCorrection || txn.amount < 0;
+  const isCorrected = txn.isCorrected === true;
 
   return (
     <div
@@ -37,9 +36,9 @@ function TransactionRow({ txn }: { txn: Transaction }) {
       )}
     >
       <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <p className={cn('text-sm font-medium', isCorrected && 'line-through')}>
-            <TransactionTypeLabel type={txn.transactionType} />
+            {paymentTypeLabel(txn.transactionType)}
           </p>
           <StatusBadge status={txn.approvalStatus} variant="approval" />
           {isCorrected && (
@@ -47,18 +46,21 @@ function TransactionRow({ txn }: { txn: Transaction }) {
               Corrected
             </Badge>
           )}
+          {isCorrection && (
+            <Badge variant="outline" className="text-[10px] text-destructive border-destructive">
+              Reversal
+            </Badge>
+          )}
         </div>
         <p className="text-xs text-muted-foreground">{formatDate(txn.transactionDate)}</p>
       </div>
-      <p
-        className={cn(
-          'text-sm font-semibold flex-shrink-0 ml-3',
-          isCorrective && 'text-destructive',
-        )}
-      >
-        {isCorrective ? '- ' : ''}
-        <CurrencyDisplay amount={Math.abs(txn.amount)} />
-      </p>
+      <div className="flex items-center gap-1 flex-shrink-0 ml-3">
+        <p className={cn('text-sm font-semibold', isCorrection && 'text-destructive')}>
+          {isCorrection ? '- ' : ''}
+          <CurrencyDisplay amount={Math.abs(txn.amount)} />
+        </p>
+        {onRemove && <EntryActionsMenu transactionId={txn.id} onRemove={onRemove} />}
+      </div>
     </div>
   );
 }
@@ -66,6 +68,8 @@ function TransactionRow({ txn }: { txn: Transaction }) {
 export function LoanTransactionList({ loanId }: LoanTransactionListProps) {
   const { data, isLoading, hasNextPage, isFetchingNextPage, fetchNextPage } =
     useLoanTransactions(loanId);
+  const { isAdmin } = useAuth();
+  const [removeTarget, setRemoveTarget] = useState<string | null>(null);
   const observerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -104,11 +108,21 @@ export function LoanTransactionList({ loanId }: LoanTransactionListProps) {
   return (
     <div>
       {transactions.map((txn) => (
-        <TransactionRow key={txn.id} txn={txn} />
+        <TransactionRow
+          key={txn.id}
+          txn={txn}
+          onRemove={isAdmin && txn.canFix ? setRemoveTarget : undefined}
+        />
       ))}
       <div ref={observerRef} className="h-4">
         {isFetchingNextPage && <Skeleton className="h-12 w-full mt-2" />}
       </div>
+
+      <RemoveEntrySheet
+        open={removeTarget !== null}
+        onOpenChange={(open) => !open && setRemoveTarget(null)}
+        transactionId={removeTarget}
+      />
     </div>
   );
 }
