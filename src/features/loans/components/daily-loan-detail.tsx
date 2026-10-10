@@ -12,11 +12,13 @@ import { CurrencyDisplay } from '@/components/shared/currency-display';
 import { ConfirmationDialog } from '@/components/shared/confirmation-dialog';
 import { CollectionCalendar } from './collection-calendar';
 import { CancelLoanSheet } from './cancel-loan-sheet';
+import { SettleLoanSheet } from './settle-loan-sheet';
 import { LoanTransactionList } from './loan-transaction-list';
 import { PenaltyList } from '@/features/penalties/components/penalty-list';
 import { useCloseLoan, useDefaultLoan, useWriteOffLoan } from '../hooks/use-loan-actions';
+import { canSettleDailyLoan } from '../settlement';
 import { formatDate } from '@/utils/date';
-import { Info, Receipt, XCircle, AlertTriangle, Ban, AlertOctagon } from 'lucide-react';
+import { Info, Receipt, XCircle, AlertTriangle, Ban, AlertOctagon, Handshake } from 'lucide-react';
 import type { DailyLoanDetail as DailyLoanDetailType } from '@/types/entities';
 
 interface DailyLoanDetailProps {
@@ -56,9 +58,11 @@ export function DailyLoanDetail({ loan, readOnly }: DailyLoanDetailProps) {
   const [defaultOpen, setDefaultOpen] = useState(false);
   const [writeOffOpen, setWriteOffOpen] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
+  const [settleOpen, setSettleOpen] = useState(false);
 
   const isActive = loan.status === 'ACTIVE';
   const isDefaulted = loan.status === 'DEFAULTED';
+  const canSettle = canSettleDailyLoan(loan);
   const progressPercent = loan.totalRepaymentAmount > 0
     ? Math.min(100, (loan.totalCollected / loan.totalRepaymentAmount) * 100)
     : 0;
@@ -70,6 +74,9 @@ export function DailyLoanDetail({ loan, readOnly }: DailyLoanDetailProps) {
         <div className="flex items-center gap-2 mb-1">
           <h1 className="text-lg font-bold">{loan.loanNumber}</h1>
           <StatusBadge status={loan.status} variant="loan" />
+          {loan.isSettled && (
+            <Badge variant="outline" className="text-[10px]">Settled</Badge>
+          )}
           {loan.isMigrated && (
             <Badge variant="outline" className="text-[10px]">Migrated</Badge>
           )}
@@ -120,7 +127,17 @@ export function DailyLoanDetail({ loan, readOnly }: DailyLoanDetailProps) {
         </CardHeader>
         <CardContent className="divide-y">
           <MetricRow label="Principal" value={<CurrencyDisplay amount={loan.principalAmount} />} />
-          <MetricRow label="Total Repayment" value={<CurrencyDisplay amount={loan.totalRepaymentAmount} />} />
+          <MetricRow
+            label="Total Repayment"
+            value={<CurrencyDisplay amount={loan.totalRepaymentAmount} />}
+            tooltip={loan.isSettled ? 'Settled for less than the scheduled total' : undefined}
+          />
+          {loan.isSettled && loan.originalTotalRepaymentAmount != null && (
+            <MetricRow
+              label="Originally Scheduled"
+              value={<CurrencyDisplay amount={loan.originalTotalRepaymentAmount} />}
+            />
+          )}
           <MetricRow
             label="Daily Amount"
             value={<CurrencyDisplay amount={loan.dailyPaymentAmount} />}
@@ -163,6 +180,12 @@ export function DailyLoanDetail({ loan, readOnly }: DailyLoanDetailProps) {
               <Button size="sm" variant="outline" onClick={() => setCloseOpen(true)}>
                 <XCircle className="mr-1 h-4 w-4" />
                 Close
+              </Button>
+            )}
+            {canSettle && (
+              <Button size="sm" variant="outline" onClick={() => setSettleOpen(true)}>
+                <Handshake className="mr-1 h-4 w-4" />
+                Settle &amp; Close
               </Button>
             )}
             {isActive && (
@@ -240,6 +263,7 @@ export function DailyLoanDetail({ loan, readOnly }: DailyLoanDetailProps) {
           )}
           {loan.notes && <MetricRow label="Notes" value={loan.notes} />}
           {loan.closureDate && <MetricRow label="Closure Date" value={formatDate(loan.closureDate)} />}
+          {loan.settlementNote && <MetricRow label="Settlement Note" value={loan.settlementNote} />}
         </CardContent>
       </Card>
 
@@ -272,6 +296,7 @@ export function DailyLoanDetail({ loan, readOnly }: DailyLoanDetailProps) {
       />
 
       <CancelLoanSheet open={cancelOpen} onOpenChange={setCancelOpen} loanId={loan.id} />
+      <SettleLoanSheet open={settleOpen} onOpenChange={setSettleOpen} loan={loan} />
     </div>
   );
 }

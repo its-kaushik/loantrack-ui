@@ -89,6 +89,11 @@ export interface DailyLoanDetail extends Loan {
   termEndDate: string;
   graceDays: number;
   totalCollected: number;
+  /** True when the loan was closed for less than its scheduled total. */
+  isSettled: boolean;
+  /** The scheduled total before settlement; null unless the loan was settled. */
+  originalTotalRepaymentAmount: number | null;
+  settlementNote: string | null;
   totalRemaining: number;
   daysPaid: number;
   daysRemaining: number;

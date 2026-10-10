@@ -17,6 +17,7 @@ The API is a separate repo, expected as a sibling checkout at `../loantrack` (Ex
 - **Verify before calling it done.** Run `npm test`, `npm run lint` and `npm run build`, and exercise the changed screen. If something could not be run or checked, say so plainly.
 - **Hard-to-undo steps need an explicit go-ahead**: committing, pushing, deploying. Installed PWAs cache the app's assets, so a bad release can linger on users' phones.
 - **Work from `main`.** It is the default branch; `master` is an old line 31 commits behind it (see Gotchas). Check `git branch --show-current` before starting.
+- **Pushing to `main` is a production deploy.** Vercel deploys `main` to `loantrack-ui.vercel.app` automatically, and any other pushed branch gets a public preview deployment. Work on a local branch. A screen that calls a new API endpoint must not reach `main` before the backend that serves it is live.
 
 ## Stack
 
@@ -99,6 +100,7 @@ Feature domains: auth, collector, customers, dashboard, expenses, fund, loans, p
 - Bulk daily collection (`POST /transactions/bulk`) needs an `Idempotency-Key` header (`utils/idempotency.ts`) and returns per-item success/failure; show the result with `bulk-result-modal`.
 - Penalties exist only on daily loans; interest waivers only on monthly loans.
 - Cancelling a loan requires a non-empty `cancellationReason`.
+- A daily loan repaid for less than its scheduled total (usually an early repayment charged less interest) is closed with **Settle & Close**, not Close: `PATCH /loans/:id/settle` with `settlementAmount` equal to the loan's `totalCollected`. The button shows only when `canSettleDailyLoan` holds (active, principal recovered, scheduled total not reached). After settling, `totalRepaymentAmount` is the settled amount, `isSettled` is true and `originalTotalRepaymentAmount` holds the old schedule. Never work around a loan that won't close by recording a collection that wasn't received.
 
 ## PWA
 

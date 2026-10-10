@@ -107,3 +107,11 @@ export async function getMissedToday(): Promise<MissedTodayResponse> {
   const response = await apiClient.get<MissedTodayResponse>('/loans/missed-today');
   return response.data;
 }
+
+export async function settleLoan(
+  id: string,
+  body: { settlementAmount: number; note?: string },
+): Promise<DailyLoanDetail> {
+  const response = await apiClient.patch<DailyLoanDetail>(`/loans/${id}/settle`, body);
+  return response.data;
+}
