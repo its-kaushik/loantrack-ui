@@ -11,9 +11,10 @@ import { StatusBadge } from '@/components/shared/status-badge';
 import { CurrencyDisplay } from '@/components/shared/currency-display';
 import { ConfirmationDialog } from '@/components/shared/confirmation-dialog';
 import { CollectionCalendar } from './collection-calendar';
+import { CancelLoanSheet } from './cancel-loan-sheet';
 import { LoanTransactionList } from './loan-transaction-list';
 import { PenaltyList } from '@/features/penalties/components/penalty-list';
-import { useCloseLoan, useDefaultLoan, useWriteOffLoan, useCancelLoan } from '../hooks/use-loan-actions';
+import { useCloseLoan, useDefaultLoan, useWriteOffLoan } from '../hooks/use-loan-actions';
 import { formatDate } from '@/utils/date';
 import { Info, Receipt, XCircle, AlertTriangle, Ban, AlertOctagon } from 'lucide-react';
 import type { DailyLoanDetail as DailyLoanDetailType } from '@/types/entities';
@@ -50,7 +51,6 @@ export function DailyLoanDetail({ loan, readOnly }: DailyLoanDetailProps) {
   const closeMutation = useCloseLoan(loan.id);
   const defaultMutation = useDefaultLoan(loan.id);
   const writeOffMutation = useWriteOffLoan(loan.id);
-  const cancelMutation = useCancelLoan(loan.id);
 
   const [closeOpen, setCloseOpen] = useState(false);
   const [defaultOpen, setDefaultOpen] = useState(false);
@@ -270,15 +270,8 @@ export function DailyLoanDetail({ loan, readOnly }: DailyLoanDetailProps) {
         destructive
         loading={writeOffMutation.isPending}
       />
-      <ConfirmationDialog
-        open={cancelOpen}
-        onOpenChange={setCancelOpen}
-        title="Cancel Loan"
-        description="Are you sure you want to cancel this loan? This action cannot be undone."
-        onConfirm={() => cancelMutation.mutate('')}
-        destructive
-        loading={cancelMutation.isPending}
-      />
+
+      <CancelLoanSheet open={cancelOpen} onOpenChange={setCancelOpen} loanId={loan.id} />
     </div>
   );
 }

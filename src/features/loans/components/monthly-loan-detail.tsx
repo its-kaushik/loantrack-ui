@@ -10,9 +10,10 @@ import { StatusBadge } from '@/components/shared/status-badge';
 import { CurrencyDisplay } from '@/components/shared/currency-display';
 import { ConfirmationDialog } from '@/components/shared/confirmation-dialog';
 import { WaiveInterestSheet } from '@/features/penalties/components/waive-interest-sheet';
+import { CancelLoanSheet } from './cancel-loan-sheet';
 import { PaymentStatusTable } from './payment-status-table';
 import { LoanTransactionList } from './loan-transaction-list';
-import { useCloseLoan, useDefaultLoan, useWriteOffLoan, useCancelLoan } from '../hooks/use-loan-actions';
+import { useCloseLoan, useDefaultLoan, useWriteOffLoan } from '../hooks/use-loan-actions';
 import { formatDate } from '@/utils/date';
 import { Info, Receipt, XCircle, AlertTriangle, Ban, PercentCircle } from 'lucide-react';
 import type { MonthlyLoanDetail as MonthlyLoanDetailType } from '@/types/entities';
@@ -49,7 +50,6 @@ export function MonthlyLoanDetail({ loan, readOnly }: MonthlyLoanDetailProps) {
   const closeMutation = useCloseLoan(loan.id);
   const defaultMutation = useDefaultLoan(loan.id);
   const writeOffMutation = useWriteOffLoan(loan.id);
-  const cancelMutation = useCancelLoan(loan.id);
 
   const [closeOpen, setCloseOpen] = useState(false);
   const [defaultOpen, setDefaultOpen] = useState(false);
@@ -210,15 +210,8 @@ export function MonthlyLoanDetail({ loan, readOnly }: MonthlyLoanDetailProps) {
         destructive
         loading={writeOffMutation.isPending}
       />
-      <ConfirmationDialog
-        open={cancelOpen}
-        onOpenChange={setCancelOpen}
-        title="Cancel Loan"
-        description="Are you sure you want to cancel this loan? This action cannot be undone."
-        onConfirm={() => cancelMutation.mutate('')}
-        destructive
-        loading={cancelMutation.isPending}
-      />
+
+      <CancelLoanSheet open={cancelOpen} onOpenChange={setCancelOpen} loanId={loan.id} />
 
       <WaiveInterestSheet
         open={waiveInterestOpen}
